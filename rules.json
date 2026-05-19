@@ -1,0 +1,71 @@
+{
+  "watchlist": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT", "LTCUSDT"],
+  "default_timeframe": "1m",
+
+  "strategy": {
+    "name": "Multi-Confluence Scalping — van de Poppe + ICT + Tone Vays",
+    "sources": ["Michaël van de Poppe", "ICT (Inner Circle Trader)", "Tone Vays"],
+    "description": "Combines EMA stack alignment (van de Poppe), VWAP institutional bias, RSI dual-timeframe (Tone Vays), and volume spike confirmation (ICT). Position size scales $30-$70 based on signal confluence strength. Only enters when all 6 conditions align — higher confluence = larger size."
+  },
+
+  "indicators": {
+    "ema_9":  "Fast EMA — short-term momentum. Must point in trade direction.",
+    "ema_21": "Medium EMA (van de Poppe anchor). Price must be above for longs, below for shorts.",
+    "ema_50": "Trend filter. Gives extra confluence weight when price aligns with it.",
+    "vwap":   "Institutional bias anchor. Resets midnight UTC. Price above = buyers in control.",
+    "rsi_3":  "Entry timing trigger — hypersensitive. < 40 for long pullback, > 60 for short exhaustion (when 5m HTF aligns; strict 30/70 when counter-trend).",
+    "rsi_14": "Trend-direction RSI (Tone Vays). Must be > 50 for longs, < 50 for shorts.",
+    "volume": "ICT confirmation — current candle volume vs 20-period average. >= 1.2x when 5m HTF aligned, >= 1.5x when counter-trend.",
+    "htf_5m": "Higher Timeframe filter — 5m EMA9 vs EMA21. Trade only in direction of 5m trend."
+  },
+
+  "confluence_scoring": {
+    "description": "Signal strength score 0-3 determines position size",
+    "score_0_or_1": "$30 — weak signal, minimum size",
+    "score_2":      "$50 — medium signal",
+    "score_3":      "$70 — strong signal, maximum size",
+    "bonus_points": [
+      "RSI(3) below 15 (long) or above 85 (short) = +1 point (extreme exhaustion)",
+      "Volume >= 2x average = +1 point (strong institutional confirmation)",
+      "Price aligned with EMA50 = +1 point (triple EMA stack)"
+    ]
+  },
+
+  "entry_rules": {
+    "long": [
+      "5m HTF: EMA9 > EMA21 on 5m chart — only trade longs in 5m uptrend",
+      "Price above VWAP — institutional session bias bullish",
+      "Price above EMA(21) — medium-term trend confirmed (van de Poppe)",
+      "EMA(9) above EMA(21) — short-term momentum aligned with trend",
+      "RSI(14) above 50 — trend RSI confirms bull side (Tone Vays)",
+      "RSI(3) below 40 — short-term pullback timing (relaxed when 5m aligns)",
+      "Volume spike >= 1.2x 20-period average — smart money confirmation (relaxed when 5m aligns)"
+    ],
+    "short": [
+      "5m HTF: EMA9 < EMA21 on 5m chart — only trade shorts in 5m downtrend",
+      "Price below VWAP — institutional session bias bearish",
+      "Price below EMA(21) — medium-term trend confirmed bearish",
+      "EMA(9) below EMA(21) — short-term momentum aligned with downtrend",
+      "RSI(14) below 50 — trend RSI confirms bear side",
+      "RSI(3) above 60 — short-term exhaustion in downtrend (relaxed when 5m aligns)",
+      "Volume spike >= 1.2x 20-period average — smart money confirmation (relaxed when 5m aligns)"
+    ]
+  },
+
+  "exit_rules": [
+    "Stop Loss: ATR-based, minimum 0.3% — placed on Binance at entry",
+    "Take Profit: 2x ATR from entry (2:1 R:R minimum), minimum 0.6%",
+    "Early exit: RSI(3) crosses back above 50 (longs) or below 50 (shorts)",
+    "Never hold through a VWAP recross against your position"
+  ],
+
+  "risk_rules": [
+    "Position size: $30 base, scales to $70 based on confluence score",
+    "Maximum $70 per trade regardless of score",
+    "Maximum 20 trades per day across all symbols",
+    "Never open two positions in the same symbol simultaneously",
+    "Stop trading if daily PnL exceeds -$150 (5 max losses)"
+  ],
+
+  "notes": "6-condition filter is strict by design. Most scans will be blocked. Quality > quantity. The best setups score 3 confluence points and fire at $70. Weak setups at $30 are acceptable but rare — the volume filter usually kills marginal signals."
+}
