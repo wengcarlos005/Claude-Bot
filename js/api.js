@@ -17,7 +17,7 @@ const PriceAPI = {
     async fetchDividends(tickers, token) {
         if (!token || tickers.length === 0) return {};
         try {
-            const url = `/api/dividends?tickers=${tickers.join(',')}&token=${encodeURIComponent(token)}&_v=3`;
+            const url = `/api/dividends?tickers=${tickers.join(',')}&token=${encodeURIComponent(token)}&_v=4`;
             const resp = await fetch(url);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
