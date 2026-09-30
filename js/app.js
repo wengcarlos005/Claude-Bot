@@ -449,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
                 const token = this._getBrapiToken();
-                if (token) await PriceAPI.fetchQuotes(tickers, token);
+                if (token) await PriceAPI.fetchDividends(tickers, token);
             }
 
             const firstBuy = {};
