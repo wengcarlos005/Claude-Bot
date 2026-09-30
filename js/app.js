@@ -451,7 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tx.operacao === 'compra' && (!firstBuy[k] || tx.date < firstBuy[k])) firstBuy[k] = tx.date;
             }
 
+            console.log('[proventos] tickers to fetch:', tickers, 'firstBuy:', firstBuy);
             const allDivs = await PriceAPI.fetchDividendsBatch(tickers, token);
+            console.log('[proventos] allDivs keys:', Object.keys(allDivs), 'total divs:', Object.values(allDivs).reduce((s, a) => s + a.length, 0));
             const rows = [];
 
             for (const [ticker, divs] of Object.entries(allDivs)) {

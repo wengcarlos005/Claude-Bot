@@ -42,19 +42,30 @@ const PriceAPI = {
 
     async fetchDividendsBatch(tickers, token) {
         if (!token || tickers.length === 0) return {};
+        console.log('[brapi] fetching dividends for:', tickers);
         const results = {};
-        for (let i = 0; i < tickers.length; i += 3) {
-            const batch = tickers.slice(i, i + 3);
-            await Promise.all(batch.map(async ticker => {
-                try {
-                    const resp = await fetch(`${this.BASE_URL}/quote/${ticker}?dividends=true&token=${token}`);
-                    if (!resp.ok) return;
-                    const data = await resp.json();
-                    const sym = (data.results?.[0]?.symbol || ticker).toUpperCase();
-                    results[sym] = data.results?.[0]?.dividendsData?.cashDividends || [];
-                } catch (e) {}
-            }));
-            if (i + 3 < tickers.length) await new Promise(r => setTimeout(r, 500));
+        for (let i = 0; i < tickers.length; i++) {
+            const ticker = tickers[i];
+            try {
+                const url = `${this.BASE_URL}/quote/${encodeURIComponent(ticker)}?dividends=true&token=${token}`;
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    console.warn('[brapi] HTTP', resp.status, 'for', ticker);
+                    continue;
+                }
+                const data = await resp.json();
+                if (data.results && data.results[0]) {
+                    const sym = (data.results[0].symbol || ticker).toUpperCase();
+                    const divs = data.results[0].dividendsData?.cashDividends || [];
+                    results[sym] = divs;
+                    console.log('[brapi]', ticker, '->', sym, divs.length, 'dividends');
+                } else {
+                    console.warn('[brapi] no results for', ticker, data);
+                }
+            } catch (e) {
+                console.error('[brapi] error for', ticker, e.message);
+            }
+            if (i < tickers.length - 1) await new Promise(r => setTimeout(r, 600));
         }
         return results;
     },
