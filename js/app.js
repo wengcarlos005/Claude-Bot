@@ -28,18 +28,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const settings = await DB.getSettings();
                 document.body.setAttribute('data-theme', settings.theme || 'dark');
                 document.getElementById('cdi-rate').value = settings.cdi_rate || 13.15;
+                const brapiInput = document.getElementById('brapi-token');
+                if (brapiInput) {
+                    try {
+                        brapiInput.value = localStorage.getItem('brapi_token') || '';
+                    } catch (e) {}
+                }
                 await this.refreshCache();
                 this.bindNav();
                 this.bindModals();
                 this.bindTheme();
                 this.bindExport();
                 this.bindCdi();
+                this.bindBrapiToken();
                 this.bindForms();
                 this.bindUpdatePrices();
                 this.bindLogout();
                 await this.checkMigration();
                 this.showScreen('app');
                 this.navigate('dashboard');
+                this.autoUpdatePrices();
             } catch (err) {
                 console.error('Erro ao carregar app:', err);
                 Utils.showToast('Erro ao carregar dados. Tente novamente.', 'error');
@@ -157,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'composicao': this.renderComposicao(); break;
                 case 'transacoes': this.renderTransacoes(); break;
                 case 'seguindo': this.renderSeguindo(); break;
+                case 'calendario': this.renderCalendario(); break;
             }
         },
 
@@ -602,6 +611,51 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
         },
 
+        // ==================== CALENDARIO ====================
+        async renderCalendario() {
+            const container = document.getElementById('calendario-content');
+            if (!container) return;
+            const token = this._getBrapiToken();
+            const portfolio = this.cache.portfolio || {};
+            const tickers = Object.keys(portfolio);
+
+            if (!token) {
+                container.innerHTML = '<div class="empty-state"><p>Configure seu token brapi.dev no topo da pagina para ver o calendario de proventos</p></div>';
+                return;
+            }
+
+            if (tickers.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Adicione ativos na sua carteira para ver o calendario de proventos</p></div>';
+                return;
+            }
+
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">Carregando proventos...</div>';
+
+            const allDividends = [];
+            for (const ticker of tickers.slice(0, 10)) {
+                const divs = await PriceAPI.fetchDividends(ticker, token);
+                divs.forEach(d => allDividends.push({ ...d, ticker }));
+            }
+
+            allDividends.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+            const recent = allDividends.slice(0, 50);
+
+            if (recent.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nenhum provento encontrado para seus ativos</p></div>';
+                return;
+            }
+
+            let html = '<div class="card"><div class="card-header"><h3>Proventos dos seus Ativos (brapi.dev)</h3></div>';
+            html += '<div class="table-wrapper"><table class="data-table"><thead><tr><th>Data Pgto</th><th>Ativo</th><th>Tipo</th><th>Valor/Cota</th></tr></thead><tbody>';
+            for (const d of recent) {
+                const date = d.paymentDate ? new Date(d.paymentDate).toLocaleDateString('pt-BR') : '-';
+                html += `<tr><td>${date}</td><td><strong>${Utils.escapeHtml(d.ticker)}</strong></td><td>${Utils.escapeHtml(d.label || 'Dividendo')}</td><td>R$ ${Number(d.rate || 0).toFixed(4)}</td></tr>`;
+            }
+            html += '</tbody></table></div></div>';
+            container.innerHTML = html;
+        },
+
         // ==================== MODALS ====================
         bindModals() {
             document.querySelectorAll('[data-close]').forEach(btn => {
@@ -863,6 +917,46 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
 
+        // ==================== BRAPI TOKEN ====================
+        bindBrapiToken() {
+            const el = document.getElementById('brapi-token');
+            if (el && !el._bound) {
+                el._bound = true;
+                el.addEventListener('change', (e) => {
+                    const token = e.target.value.trim();
+                    try {
+                        localStorage.setItem('brapi_token', token);
+                    } catch (err) {}
+                    if (token) {
+                        Utils.showToast('Token brapi.dev salvo!', 'success');
+                    }
+                });
+            }
+        },
+
+        _getBrapiToken() {
+            try {
+                return localStorage.getItem('brapi_token') || '';
+            } catch (e) {
+                return '';
+            }
+        },
+
+        async autoUpdatePrices() {
+            const token = this._getBrapiToken();
+            if (!token) return;
+            try {
+                const prices = await PriceAPI.updateAllPrices(token);
+                if (Object.keys(prices).length > 0) {
+                    await this.refreshCache();
+                    if (this.currentTab === 'dashboard') this.renderDashboard();
+                    if (this.currentTab === 'carteira') this.renderPatrimonio();
+                }
+            } catch (e) {
+                console.error('Auto price update failed:', e);
+            }
+        },
+
         // ==================== EXPORT/IMPORT ====================
         bindExport() {
             const expBtn = document.getElementById('btn-export');
@@ -912,7 +1006,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById('btn-update-prices');
             if (btn && !btn._bound) {
                 btn._bound = true;
-                btn.addEventListener('click', () => this.openPriceUpdateModal());
+                btn.addEventListener('click', async () => {
+                    const token = this._getBrapiToken();
+                    if (!token) {
+                        this.openPriceUpdateModal();
+                        return;
+                    }
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                    try {
+                        const prices = await PriceAPI.updateAllPrices(token);
+                        const count = Object.keys(prices).length;
+                        if (count > 0) {
+                            await DB._takeSnapshot();
+                            await this.refreshCache();
+                            Charts.destroyAll();
+                            this.navigate(this.currentTab);
+                            Utils.showToast(`${count} cotacoes atualizadas!`, 'success');
+                        } else {
+                            Utils.showToast('Nenhuma cotacao encontrada', 'error');
+                        }
+                    } catch (e) {
+                        console.error('Price update error:', e);
+                        Utils.showToast('Erro ao atualizar cotacoes', 'error');
+                    }
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                });
             }
             const saveBtn = document.getElementById('btn-save-precos');
             if (saveBtn && !saveBtn._bound) {
@@ -928,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     await DB._takeSnapshot();
                     document.getElementById('modal-preco').classList.remove('open');
-                    Utils.showToast('Preços atualizados!', 'success');
+                    Utils.showToast('Precos atualizados!', 'success');
                     await this.refreshCache();
                     Charts.destroyAll();
                     this.navigate(this.currentTab);
