@@ -693,11 +693,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('trans-preco').value = txData.preco;
                 document.getElementById('trans-taxas').value = txData.taxas || 0;
                 document.getElementById('trans-preco-atual').value = txData.precoAtual || '';
+                this._toggleRendaFixaForm(txData.classe === 'renda-fixa');
             } else {
                 document.getElementById('modal-trans-title').textContent = 'Nova Transação';
                 form.reset();
                 document.getElementById('trans-edit-id').value = '';
                 document.getElementById('trans-data').value = Utils.todayStr();
+                this._toggleRendaFixaForm(false);
             }
             document.getElementById('modal-transacao').classList.add('open');
         },
@@ -732,7 +734,37 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // ==================== FORMS ====================
+        _toggleRendaFixaForm(isRF) {
+            document.getElementById('label-qtd').textContent = isRF ? 'Quantidade (1)' : 'Quantidade';
+            document.getElementById('label-preco').textContent = isRF ? 'Valor Investido (R$)' : 'Preço Unitário (R$)';
+            document.getElementById('label-preco-atual').textContent = isRF ? '% do CDI' : 'Preço Atual (R$)';
+            const qtdInput = document.getElementById('trans-qtd');
+            const precoAtualInput = document.getElementById('trans-preco-atual');
+            const taxasGroup = document.getElementById('group-taxas');
+            if (isRF) {
+                qtdInput.value = 1;
+                qtdInput.readOnly = true;
+                qtdInput.style.opacity = '0.5';
+                if (!precoAtualInput.value) precoAtualInput.value = '100';
+                precoAtualInput.placeholder = 'Ex: 115';
+                taxasGroup.style.display = 'none';
+            } else {
+                qtdInput.readOnly = false;
+                qtdInput.style.opacity = '1';
+                precoAtualInput.placeholder = '';
+                taxasGroup.style.display = '';
+            }
+        },
+
         bindForms() {
+            const classeSelect = document.getElementById('trans-classe');
+            if (classeSelect && !classeSelect._rfBound) {
+                classeSelect._rfBound = true;
+                classeSelect.addEventListener('change', (e) => {
+                    this._toggleRendaFixaForm(e.target.value === 'renda-fixa');
+                });
+            }
+
             const txForm = document.getElementById('form-transacao');
             if (txForm && !txForm._bound) {
                 txForm._bound = true;

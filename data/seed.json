@@ -16,7 +16,7 @@
     { "id": "nu20260924a", "date": "2026-09-24", "operacao": "compra", "ticker": "VGIR11", "classe": "fii", "setor": "outros", "qtd": 31, "preco": 9.21, "taxas": 0, "precoAtual": 0 },
     { "id": "nu20260806f", "date": "2026-08-06", "operacao": "compra", "ticker": "VISA34", "classe": "bdr", "setor": "financeiro", "qtd": 3, "preco": 56.30, "taxas": 0, "precoAtual": 0 },
 
-    { "id": "rf20260115a", "date": "2026-01-15", "operacao": "compra", "ticker": "NUBANK-RF", "classe": "renda-fixa", "setor": "financeiro", "qtd": 1, "preco": 4987.42, "taxas": 0, "precoAtual": 5467.83 }
+    { "id": "rf20260115a", "date": "2026-01-15", "operacao": "compra", "ticker": "NUBANK-RF", "classe": "renda-fixa", "setor": "financeiro", "qtd": 1, "preco": 4987.42, "taxas": 0, "precoAtual": 115 }
   ],
   "proventos": [
     { "id": "pv20260228a", "date": "2026-02-28", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 29.20, "qtd": 1, "total": 29.20 },

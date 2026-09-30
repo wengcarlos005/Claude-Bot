@@ -93,7 +93,7 @@ const DB = {
             qtd: tx.qtd, preco: tx.preco, taxas: tx.taxas || 0, preco_atual: tx.precoAtual || 0,
         });
         if (error) throw error;
-        if (tx.precoAtual > 0) await this.updatePrice(tx.ticker, tx.precoAtual);
+        if (tx.precoAtual > 0 && tx.classe !== 'renda-fixa') await this.updatePrice(tx.ticker, tx.precoAtual);
         await this._takeSnapshot();
         return tx;
     },
@@ -211,9 +211,24 @@ const DB = {
         await supabase.from('user_settings').update(settings).eq('user_id', Auth.getUserId());
     },
 
+    _calcRendaFixa(principal, cdiPct, purchaseDate, cdiRate) {
+        const rate = (cdiRate || 13.15) / 100;
+        const pct = (cdiPct || 100) / 100;
+        const effectiveRate = rate * pct;
+        const start = new Date(purchaseDate);
+        const now = new Date();
+        const daysDiff = (now - start) / (1000 * 60 * 60 * 24);
+        if (daysDiff <= 0) return principal;
+        const bizDays = Math.floor(daysDiff * 252 / 365);
+        const dailyRate = Math.pow(1 + effectiveRate, 1 / 252) - 1;
+        return principal * Math.pow(1 + dailyRate, bizDays);
+    },
+
     async getPortfolio() {
         const transactions = await this.getTransactions();
         const prices = await this.getPrices();
+        const settings = await this.getSettings();
+        const cdiRate = settings.cdi_rate || 13.15;
         const holdings = {};
 
         for (const tx of transactions) {
@@ -225,7 +240,15 @@ const DB = {
             h.classe = tx.classe;
             h.setor = tx.setor || h.setor;
 
-            if (tx.operacao === 'compra') {
+            if (tx.classe === 'renda-fixa') {
+                if (tx.operacao === 'compra') {
+                    const invested = tx.qtd * tx.preco;
+                    h.totalInvested += invested;
+                    h.qtd += tx.qtd;
+                    h.cdiPct = tx.precoAtual || 100;
+                    h.purchaseDate = h.purchaseDate || tx.date;
+                }
+            } else if (tx.operacao === 'compra') {
                 const cost = tx.qtd * tx.preco + (tx.taxas || 0);
                 h.totalInvested += cost;
                 h.qtd += tx.qtd;
@@ -247,8 +270,13 @@ const DB = {
         const active = {};
         for (const [k, h] of Object.entries(holdings)) {
             if (h.qtd > 0.000001) {
-                h.currentPrice = prices[k] || h.avgPrice;
-                h.currentValue = h.qtd * h.currentPrice;
+                if (h.classe === 'renda-fixa') {
+                    h.currentValue = this._calcRendaFixa(h.totalInvested, h.cdiPct, h.purchaseDate, cdiRate);
+                    h.currentPrice = h.currentValue / h.qtd;
+                } else {
+                    h.currentPrice = prices[k] || h.avgPrice;
+                    h.currentValue = h.qtd * h.currentPrice;
+                }
                 h.profit = h.currentValue - h.totalInvested;
                 h.profitPct = h.totalInvested > 0 ? (h.profit / h.totalInvested) * 100 : 0;
                 active[k] = h;
