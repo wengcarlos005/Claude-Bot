@@ -440,10 +440,15 @@ document.addEventListener('DOMContentLoaded', () => {
         async _fetchBrapiDividends() {
             if (this._brapiDividendsFetched) return this._brapiDividendsCache || [];
             this._brapiDividendsFetched = true;
-            const token = this._getBrapiToken();
             const portfolio = this.cache.portfolio || {};
             const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
-            if (!token || tickers.length === 0) { this._brapiDividendsCache = []; return []; }
+            if (tickers.length === 0) { this._brapiDividendsCache = []; return []; }
+
+            const allDivs = PriceAPI.getCachedDividends();
+            if (Object.keys(allDivs).length === 0) {
+                const token = this._getBrapiToken();
+                if (token) await PriceAPI.fetchQuotes(tickers, token, { includeDividends: true });
+            }
 
             const firstBuy = {};
             for (const tx of this.cache.transactions) {
@@ -451,13 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tx.operacao === 'compra' && (!firstBuy[k] || tx.date < firstBuy[k])) firstBuy[k] = tx.date;
             }
 
-            console.log('[proventos] tickers to fetch:', tickers, 'firstBuy:', firstBuy);
-            const allDivs = await PriceAPI.fetchDividendsBatch(tickers, token);
-            console.log('[proventos] allDivs keys:', Object.keys(allDivs), 'total divs:', Object.values(allDivs).reduce((s, a) => s + a.length, 0));
+            const divs = PriceAPI.getCachedDividends();
             const rows = [];
-
-            for (const [ticker, divs] of Object.entries(allDivs)) {
-                for (const d of divs) {
+            for (const [ticker, arr] of Object.entries(divs)) {
+                for (const d of arr) {
                     const payDate = String(d.paymentDate || '').slice(0, 10);
                     const baseDate = String(d.lastDatePrior || '').slice(0, 10);
                     const approvedDate = String(d.approvedOn || '').slice(0, 10);
