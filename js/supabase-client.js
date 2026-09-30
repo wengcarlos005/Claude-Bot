@@ -1,20 +1,31 @@
 const SUPABASE_URL = 'https://rkmndimsgqwjhsejpszl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_umPlxsx7GPFjc8ypzCwzHQ_cefg7L6t';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabase;
+try {
+    const lib = window.supabase;
+    supabase = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch (e) {
+    console.error('Supabase init error:', e);
+}
 
 const Auth = {
     user: null,
 
     async init() {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            this.user = session.user;
-            await this._ensureSettings();
+        if (!supabase) return null;
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                this.user = session.user;
+                await this._ensureSettings();
+            }
+            supabase.auth.onAuthStateChange((_event, session) => {
+                this.user = session?.user || null;
+            });
+        } catch (e) {
+            console.error('Auth init error:', e);
         }
-        supabase.auth.onAuthStateChange((_event, session) => {
-            this.user = session?.user || null;
-        });
         return this.user;
     },
 
@@ -41,9 +52,13 @@ const Auth = {
 
     async _ensureSettings() {
         if (!this.user) return;
-        const { data } = await supabase.from('user_settings').select().eq('user_id', this.user.id).single();
-        if (!data) {
-            await supabase.from('user_settings').insert({ user_id: this.user.id, cdi_rate: 13.15, theme: 'dark' });
+        try {
+            const { data } = await supabase.from('user_settings').select().eq('user_id', this.user.id).single();
+            if (!data) {
+                await supabase.from('user_settings').insert({ user_id: this.user.id, cdi_rate: 13.15, theme: 'dark' });
+            }
+        } catch (e) {
+            console.warn('Settings check failed (tables may not exist yet):', e);
         }
     },
 

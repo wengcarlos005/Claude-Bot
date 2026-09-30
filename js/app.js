@@ -5,11 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async init() {
             this.showScreen('auth');
-            const user = await Auth.init();
-            if (user) {
-                await this.startApp();
-            }
             this.bindAuth();
+            try {
+                const user = await Auth.init();
+                if (user) {
+                    await this.startApp();
+                }
+            } catch (e) {
+                console.error('Init error:', e);
+            }
         },
 
         showScreen(screen) {
