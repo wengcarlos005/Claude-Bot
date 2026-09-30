@@ -440,10 +440,17 @@ document.addEventListener('DOMContentLoaded', () => {
         async _fetchBrapiDividends() {
             if (this._brapiDividendsFetched) return this._brapiDividendsCache || [];
             this._brapiDividendsFetched = true;
-            const token = this._getBrapiToken();
             const portfolio = this.cache.portfolio || {};
             const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
-            if (!token || tickers.length === 0) { this._brapiDividendsCache = []; return []; }
+            if (tickers.length === 0) { this._brapiDividendsCache = []; return []; }
+
+            if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
+                PriceAPI.loadDividendsFromStorage();
+            }
+            if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
+                const token = this._getBrapiToken();
+                if (token) await PriceAPI.fetchDividends(tickers, token);
+            }
 
             const firstBuy = {};
             for (const tx of this.cache.transactions) {
@@ -451,14 +458,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tx.operacao === 'compra' && (!firstBuy[k] || tx.date < firstBuy[k])) firstBuy[k] = tx.date;
             }
 
+            const divs = PriceAPI.getCachedDividends();
             const rows = [];
-            const results = await Promise.all(tickers.slice(0, 15).map(async ticker => {
-                try { return { ticker, divs: await PriceAPI.fetchDividends(ticker, token) }; }
-                catch (e) { return { ticker, divs: [] }; }
-            }));
-
-            for (const { ticker, divs } of results) {
-                for (const d of divs) {
+            for (const [ticker, arr] of Object.entries(divs)) {
+                for (const d of arr) {
                     const payDate = String(d.paymentDate || '').slice(0, 10);
                     const baseDate = String(d.lastDatePrior || '').slice(0, 10);
                     const approvedDate = String(d.approvedOn || '').slice(0, 10);

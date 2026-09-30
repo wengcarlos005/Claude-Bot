@@ -1,71 +1,82 @@
 const PriceAPI = {
     BASE_URL: 'https://brapi.dev/api',
+    _dividendsCache: {},
 
     async fetchQuotes(tickers, token) {
         if (!token || tickers.length === 0) return {};
         const results = {};
-        for (let i = 0; i < tickers.length; i += 20) {
-            const batch = tickers.slice(i, i + 20);
-            try {
-                const resp = await fetch(`${this.BASE_URL}/quote/${batch.join(',')}?token=${token}`);
-                const data = await resp.json();
-                if (data.results) {
-                    data.results.forEach(r => {
-                        results[r.symbol.toUpperCase()] = r.regularMarketPrice;
-                    });
-                } else if (batch.length > 1) {
-                    for (const ticker of batch) {
-                        try {
-                            const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?token=${token}`);
-                            const d2 = await r2.json();
-                            if (d2.results && d2.results[0]) {
-                                results[d2.results[0].symbol.toUpperCase()] = d2.results[0].regularMarketPrice;
-                            }
-                        } catch (e2) {}
+        try {
+            const resp = await fetch(`${this.BASE_URL}/quote/${tickers.join(',')}?token=${token}`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            if (data.results) {
+                data.results.forEach(r => {
+                    results[r.symbol.toUpperCase()] = r.regularMarketPrice;
+                });
+            }
+        } catch (e) {
+            console.error('Price fetch error:', e);
+            for (const ticker of tickers) {
+                try {
+                    const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?token=${token}`);
+                    const d2 = await r2.json();
+                    if (d2.results?.[0]) {
+                        results[d2.results[0].symbol.toUpperCase()] = d2.results[0].regularMarketPrice;
                     }
-                }
-            } catch (e) {
-                console.error('Price fetch error:', e);
-                for (const ticker of batch) {
-                    try {
-                        const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?token=${token}`);
-                        const d2 = await r2.json();
-                        if (d2.results && d2.results[0]) {
-                            results[d2.results[0].symbol.toUpperCase()] = d2.results[0].regularMarketPrice;
-                        }
-                    } catch (e2) {}
-                }
+                } catch (e2) {}
             }
         }
         return results;
     },
 
-    async fetchDividends(ticker, token) {
-        if (!token) return [];
+    async fetchDividends(tickers, token) {
+        if (!token || tickers.length === 0) return {};
         try {
-            const url = `${this.BASE_URL}/quote/${ticker}?dividends=true&token=${token}`;
+            const url = `/api/dividends?tickers=${tickers.join(',')}&token=${encodeURIComponent(token)}`;
             const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
-            const divs = data.results?.[0]?.dividendsData?.cashDividends || [];
-            console.log('[brapi] dividends', ticker, divs.length);
-            return divs;
+            this._dividendsCache = data;
+            this._saveDividendsToStorage();
+            return data;
         } catch (e) {
-            console.error('Dividend fetch error:', ticker, e);
-            return [];
+            console.error('Dividend fetch error:', e);
+            return {};
         }
+    },
+
+    _saveDividendsToStorage() {
+        try {
+            localStorage.setItem('brapi_dividends_cache', JSON.stringify({
+                ts: Date.now(), divs: this._dividendsCache
+            }));
+        } catch (e) {}
+    },
+
+    loadDividendsFromStorage() {
+        try {
+            const raw = localStorage.getItem('brapi_dividends_cache');
+            if (!raw) return false;
+            const data = JSON.parse(raw);
+            if (Date.now() - (data.ts || 0) > 24 * 60 * 60 * 1000) return false;
+            this._dividendsCache = data.divs || {};
+            return Object.keys(this._dividendsCache).length > 0;
+        } catch (e) { return false; }
+    },
+
+    getCachedDividends() {
+        return this._dividendsCache;
     },
 
     async updateAllPrices(token) {
         const portfolio = await DB.getPortfolio();
-        const tickers = Object.keys(portfolio).filter(t => {
-            const p = portfolio[t];
-            return p.classe !== 'renda-fixa';
-        });
+        const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
         if (tickers.length === 0) return {};
         const prices = await this.fetchQuotes(tickers, token);
         for (const [ticker, price] of Object.entries(prices)) {
             if (price > 0) await DB.updatePrice(ticker, price);
         }
+        this.fetchDividends(tickers, token);
         return prices;
     }
 };
