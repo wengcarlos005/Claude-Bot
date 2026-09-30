@@ -316,13 +316,14 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Data</th>
+                                    <th>Data Pgto</th>
+                                    <th>Data Base</th>
                                     <th>Ativo</th>
                                     <th>Tipo</th>
                                     <th>Valor/Cota</th>
-                                    <th>Qtd Cotas</th>
+                                    <th>Qtd</th>
                                     <th>Total</th>
-                                    <th>Ações</th>
+                                    <th>Origem</th>
                                 </tr>
                             </thead>
                             <tbody id="prov-tbody"></tbody>
@@ -349,6 +350,35 @@
                     <div class="card summary-card">
                         <div class="card-label">% do CDI</div>
                         <div class="card-value" id="rent-cdi">0,00%</div>
+                    </div>
+                </div>
+                <div class="rent-detail-cards">
+                    <div class="rent-detail-card">
+                        <div class="rent-detail-label">Lucro / Prejuizo</div>
+                        <div class="rent-detail-value" id="rent-lucro-rs">R$ 0,00</div>
+                        <div class="rent-detail-sub" id="rent-lucro-pct">0,00%</div>
+                    </div>
+                    <div class="rent-detail-card">
+                        <div class="rent-detail-label">Patrimonio Atual</div>
+                        <div class="rent-detail-value" id="rent-patrimonio-rs">R$ 0,00</div>
+                    </div>
+                    <div class="rent-detail-card">
+                        <div class="rent-detail-label">Total Investido</div>
+                        <div class="rent-detail-value" id="rent-investido-rs">R$ 0,00</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Evolucao do Patrimonio</h3>
+                        <div class="chart-period-btns" id="rent-period-btns">
+                            <button class="period-btn active" data-period="6m">6M</button>
+                            <button class="period-btn" data-period="1y">1A</button>
+                            <button class="period-btn" data-period="2y">2A</button>
+                            <button class="period-btn" data-period="all">Tudo</button>
+                        </div>
+                    </div>
+                    <div class="chart-container chart-lg">
+                        <canvas id="chart-rent-patrimonio"></canvas>
                     </div>
                 </div>
                 <div class="card">

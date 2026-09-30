@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const App = {
         currentTab: 'dashboard',
         cache: {},
+        _brapiDividendsCache: null,
+        _brapiDividendsFetched: false,
 
         async init() {
             this.showScreen('auth');
@@ -63,6 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.cache = { transactions, proventos, watchlist, prices, snapshots, portfolio };
             this.cache.totalValue = Object.values(portfolio).reduce((s, h) => s + h.currentValue, 0);
             this.cache.totalInvested = Object.values(portfolio).reduce((s, h) => s + h.totalInvested, 0);
+            this._brapiDividendsCache = null;
+            this._brapiDividendsFetched = false;
         },
 
         async checkMigration() {
@@ -417,8 +421,70 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         },
 
-        // Rendimentos mensais estimados da renda fixa (CDI x % do CDI), um lancamento por ativo/mes fechado.
-        // Meses em que o usuario ja registrou um provento manual para o ativo nao sao gerados.
+        _bindRentPeriodBtns() {
+            const btns = document.querySelectorAll('#rent-period-btns .period-btn');
+            btns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.period === this.rentPeriod);
+                if (!btn._bound) {
+                    btn._bound = true;
+                    btn.addEventListener('click', () => {
+                        this.rentPeriod = btn.dataset.period;
+                        document.querySelectorAll('#rent-period-btns .period-btn')
+                            .forEach(b => b.classList.toggle('active', b === btn));
+                        this._drawPatrimonioChart('chart-rent-patrimonio', this.rentPeriod);
+                    });
+                }
+            });
+        },
+
+        async _fetchBrapiDividends() {
+            if (this._brapiDividendsFetched) return this._brapiDividendsCache || [];
+            this._brapiDividendsFetched = true;
+            const token = this._getBrapiToken();
+            const portfolio = this.cache.portfolio || {};
+            const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
+            if (!token || tickers.length === 0) { this._brapiDividendsCache = []; return []; }
+
+            const firstBuy = {};
+            for (const tx of this.cache.transactions) {
+                const k = tx.ticker.toUpperCase();
+                if (tx.operacao === 'compra' && (!firstBuy[k] || tx.date < firstBuy[k])) firstBuy[k] = tx.date;
+            }
+
+            const rows = [];
+            const results = await Promise.all(tickers.slice(0, 15).map(async ticker => {
+                try { return { ticker, divs: await PriceAPI.fetchDividends(ticker, token) }; }
+                catch (e) { return { ticker, divs: [] }; }
+            }));
+
+            for (const { ticker, divs } of results) {
+                for (const d of divs) {
+                    const payDate = String(d.paymentDate || '').slice(0, 10);
+                    const baseDate = String(d.lastDatePrior || '').slice(0, 10);
+                    const approvedDate = String(d.approvedOn || '').slice(0, 10);
+                    const date = (payDate && /^\d{4}/.test(payDate)) ? payDate
+                        : (baseDate && /^\d{4}/.test(baseDate)) ? baseDate : approvedDate;
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+                    if (firstBuy[ticker] && date < firstBuy[ticker]) continue;
+                    const rate = Number(d.rate || 0);
+                    if (rate <= 0) continue;
+                    const qtd = portfolio[ticker]?.qtd || 0;
+                    rows.push({
+                        id: `brapi-${ticker}-${date}-${rate.toFixed(4)}`,
+                        date,
+                        dataBase: (baseDate && /^\d{4}/.test(baseDate)) ? baseDate : '',
+                        ativo: ticker,
+                        tipo: (d.label || 'dividendo').toLowerCase(),
+                        valorCota: rate, qtd, total: rate * qtd,
+                        synthetic: false, brapi: true,
+                    });
+                }
+            }
+
+            this._brapiDividendsCache = rows;
+            return rows;
+        },
+
         _getSyntheticProventos() {
             const { transactions, proventos } = this.cache;
             const cdiRate = this._getCdiRate();
@@ -458,10 +524,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return out;
         },
 
-        // Proventos registrados + rendimentos estimados da renda fixa, do mais recente ao mais antigo.
         _getAllProventos() {
-            return [...this.cache.proventos, ...this._getSyntheticProventos()]
-                .sort((a, b) => b.date.localeCompare(a.date));
+            const all = [...this.cache.proventos, ...this._getSyntheticProventos()];
+            if (this._brapiDividendsCache && this._brapiDividendsCache.length > 0) {
+                for (const bd of this._brapiDividendsCache) {
+                    const dup = all.some(r =>
+                        r.ativo.toUpperCase() === bd.ativo.toUpperCase() &&
+                        r.date.slice(0, 7) === bd.date.slice(0, 7) &&
+                        Math.abs(r.valorCota - bd.valorCota) < 0.01
+                    );
+                    if (!dup) all.push(bd);
+                }
+            }
+            return all.sort((a, b) => b.date.localeCompare(a.date));
         },
 
         // ==================== PATRIMONIO ====================
@@ -496,7 +571,16 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // ==================== PROVENTOS ====================
-        renderProventos() {
+        async renderProventos() {
+            if (!this._brapiDividendsFetched && this._getBrapiToken()) {
+                this._renderProventosUI();
+                await this._fetchBrapiDividends();
+                Charts.destroyAll();
+            }
+            this._renderProventosUI();
+        },
+
+        _renderProventosUI() {
             const { totalInvested } = this.cache;
             const proventos = this._getAllProventos();
             const now = new Date();
@@ -545,34 +629,38 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filterType) filtered = filtered.filter(p => p.tipo === filterType);
             if (filterAsset) filtered = filtered.filter(p => p.ativo === filterAsset);
 
-            document.getElementById('prov-tbody').innerHTML = filtered.map(p => `
-                <tr>
+            document.getElementById('prov-tbody').innerHTML = filtered.map(p => {
+                const dataBase = p.dataBase ? Utils.formatDate(p.dataBase) : '-';
+                const origem = p.brapi ? 'brapi.dev' : (p.synthetic ? 'Estimado' : '');
+                return `<tr>
                     <td>${Utils.formatDate(p.date)}</td>
+                    <td>${dataBase}</td>
                     <td><strong>${Utils.escapeHtml(p.ativo)}</strong></td>
                     <td>${Utils.getProventoTypeLabel(p.tipo)}</td>
                     <td class="mono">${Utils.formatCurrency(p.valorCota)}</td>
                     <td class="mono">${Utils.formatNumber(p.qtd, p.qtd < 1 ? 6 : 0)}</td>
                     <td class="mono text-green">${Utils.formatCurrency(p.total)}</td>
-                    ${p.synthetic ? '<td><span style="color:var(--text-muted)" title="Calculado automaticamente a partir do CDI">Estimado</span></td>' : `
-                    <td>
-                        <div class="action-btns">
-                            <button class="action-btn" onclick="App.editProvento('${p.id}')" title="Editar">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                            </button>
-                            <button class="action-btn delete" onclick="App.deleteProvento('${p.id}')" title="Excluir">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                            </button>
-                        </div>
-                    </td>
-                    `}
-                </tr>
-            `).join('') || '<tr><td colspan="7" class="no-data">Nenhum provento registrado</td></tr>';
+                    <td>${(p.synthetic || p.brapi) ? `<span style="color:var(--text-muted)" title="${p.brapi ? 'Dados da brapi.dev' : 'Calculado a partir do CDI'}">${origem}</span>` : `
+                    <div class="action-btns">
+                        <button class="action-btn" onclick="App.editProvento('${p.id}')" title="Editar">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                        <button class="action-btn delete" onclick="App.deleteProvento('${p.id}')" title="Excluir">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                    </div>
+                    `}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="8" class="no-data">Nenhum provento registrado</td></tr>';
         },
 
         // ==================== RENTABILIDADE ====================
+        rentPeriod: '6m',
+
         renderRentabilidade() {
             const { portfolio, totalValue, totalInvested, transactions, prices } = this.cache;
-            const profitPct = totalInvested > 0 ? ((totalValue - totalInvested) / totalInvested) * 100 : 0;
+            const profit = totalValue - totalInvested;
+            const profitPct = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
             const cdiRate = parseFloat(document.getElementById('cdi-rate').value) || 13.15;
 
             const txs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
@@ -592,6 +680,18 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('rent-mes').textContent = Utils.formatPercent(cdiMonth);
             document.getElementById('rent-ano').textContent = Utils.formatPercent(cdiYear);
             document.getElementById('rent-cdi').textContent = Utils.formatNumber(vsCdi) + '%';
+
+            const lucroEl = document.getElementById('rent-lucro-rs');
+            lucroEl.textContent = Utils.formatCurrency(profit);
+            lucroEl.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
+            const lucroSub = document.getElementById('rent-lucro-pct');
+            lucroSub.textContent = Utils.formatPercent(profitPct);
+            lucroSub.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
+            document.getElementById('rent-patrimonio-rs').textContent = Utils.formatCurrency(totalValue);
+            document.getElementById('rent-investido-rs').textContent = Utils.formatCurrency(totalInvested);
+
+            this._bindRentPeriodBtns();
+            this._drawPatrimonioChart('chart-rent-patrimonio', this.rentPeriod);
 
             if (txs.length > 0) {
                 const months = Utils.getMonthsRange(txs[0].date.slice(0, 7), Utils.todayStr().slice(0, 7));
@@ -795,47 +895,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const token = this._getBrapiToken();
             const portfolio = this.cache.portfolio || {};
             const today = Utils.todayStr();
-
-            // Proventos do usuario (registrados + rendimentos estimados da renda fixa)
-            const rows = this._getAllProventos().map(p => ({
-                date: p.date, ativo: p.ativo,
-                tipo: Utils.getProventoTypeLabel(p.tipo),
-                valorCota: p.valorCota, qtd: p.qtd, total: p.total,
-                origem: p.synthetic ? 'estimado' : 'meu',
-            }));
-
-            // Proventos publicados (brapi.dev) apenas para ativos de renda variavel da carteira
             const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
-            let brapiFailed = false;
-            if (token && tickers.length > 0) {
+
+            if (!this._brapiDividendsFetched && token && tickers.length > 0) {
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">Carregando proventos...</div>';
-                const firstBuy = {};
-                for (const tx of this.cache.transactions) {
-                    const k = tx.ticker.toUpperCase();
-                    if (tx.operacao === 'compra' && (!firstBuy[k] || tx.date < firstBuy[k])) firstBuy[k] = tx.date;
-                }
-                const results = await Promise.all(tickers.slice(0, 10).map(async ticker => {
-                    try { return { ticker, divs: await PriceAPI.fetchDividends(ticker, token) }; }
-                    catch (e) { brapiFailed = true; return { ticker, divs: [] }; }
-                }));
-                for (const { ticker, divs } of results) {
-                    for (const d of divs) {
-                        const date = String(d.paymentDate || d.lastDatePrior || d.approvedOn || '').slice(0, 10);
-                        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-                        if (firstBuy[ticker] && date < firstBuy[ticker]) continue;
-                        const rate = Number(d.rate || 0);
-                        // Ja registrado pelo usuario (mesmo ativo, mesmo mes e valor por cota equivalente)
-                        const dup = rows.some(r => r.origem === 'meu' && r.ativo.toUpperCase() === ticker
-                            && r.date.slice(0, 7) === date.slice(0, 7) && Math.abs(r.valorCota - rate) < 0.01);
-                        if (dup) continue;
-                        const qtd = portfolio[ticker].qtd;
-                        rows.push({
-                            date, ativo: ticker, tipo: d.label || 'Dividendo',
-                            valorCota: rate, qtd, total: rate * qtd, origem: 'brapi',
-                        });
-                    }
-                }
+                await this._fetchBrapiDividends();
             }
+
+            const allProvs = this._getAllProventos();
+            const rows = allProvs.map(p => ({
+                date: p.date, dataBase: p.dataBase || '',
+                ativo: p.ativo, tipo: Utils.getProventoTypeLabel(p.tipo),
+                valorCota: p.valorCota, qtd: p.qtd, total: p.total,
+                origem: p.brapi ? 'brapi' : (p.synthetic ? 'estimado' : 'meu'),
+            }));
 
             rows.sort((a, b) => b.date.localeCompare(a.date));
             const shown = rows.slice(0, 100);
@@ -851,13 +924,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let html = '<div class="card"><div class="card-header"><h3>Proventos dos seus Ativos</h3></div>';
             if (!token && tickers.length > 0) {
                 html += '<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">Configure seu token brapi.dev no topo da pagina para incluir tambem os dividendos publicados das suas acoes e FIIs.</p>';
-            } else if (brapiFailed) {
-                html += '<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">Nao foi possivel carregar todos os dados da brapi.dev.</p>';
             }
-            html += '<div class="table-wrapper"><table class="data-table"><thead><tr><th>Data Pgto</th><th>Ativo</th><th>Tipo</th><th>Valor/Cota</th><th>Qtd</th><th>Total</th><th>Origem</th></tr></thead><tbody>';
+            html += '<div class="table-wrapper"><table class="data-table"><thead><tr><th>Data Pgto</th><th>Data Base</th><th>Ativo</th><th>Tipo</th><th>Valor/Cota</th><th>Qtd</th><th>Total</th><th>Origem</th></tr></thead><tbody>';
             for (const r of shown) {
                 const future = r.date > today ? ' <span class="badge badge-compra">Futuro</span>' : '';
-                html += `<tr><td>${Utils.formatDate(r.date)}${future}</td><td><strong>${Utils.escapeHtml(r.ativo)}</strong></td><td>${Utils.escapeHtml(r.tipo)}</td>`
+                const dataBase = r.dataBase ? Utils.formatDate(r.dataBase) : '-';
+                html += `<tr><td>${Utils.formatDate(r.date)}${future}</td><td>${dataBase}</td><td><strong>${Utils.escapeHtml(r.ativo)}</strong></td><td>${Utils.escapeHtml(r.tipo)}</td>`
                     + `<td class="mono">R$ ${Number(r.valorCota || 0).toFixed(4)}</td>`
                     + `<td class="mono">${Utils.formatNumber(r.qtd, r.qtd < 1 ? 6 : 0)}</td>`
                     + `<td class="mono text-green">${Utils.formatCurrency(r.total)}</td>`
