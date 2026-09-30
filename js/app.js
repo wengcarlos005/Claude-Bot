@@ -443,7 +443,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const token = this._getBrapiToken();
             const portfolio = this.cache.portfolio || {};
             const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
-            console.log('[brapi-divs] token?', !!token, 'tickers:', tickers);
             if (!token || tickers.length === 0) { this._brapiDividendsCache = []; return []; }
 
             const firstBuy = {};
@@ -454,14 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const rows = [];
             const results = await Promise.all(tickers.slice(0, 15).map(async ticker => {
-                try {
-                    const divs = await PriceAPI.fetchDividends(ticker, token);
-                    console.log('[brapi-divs]', ticker, '→', divs.length, 'dividendos');
-                    return { ticker, divs };
-                } catch (e) {
-                    console.warn('[brapi-divs] erro', ticker, e);
-                    return { ticker, divs: [] };
-                }
+                try { return { ticker, divs: await PriceAPI.fetchDividends(ticker, token) }; }
+                catch (e) { return { ticker, divs: [] }; }
             }));
 
             for (const { ticker, divs } of results) {
