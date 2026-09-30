@@ -43,8 +43,19 @@
     { "id": "nu20260916c", "date": "2026-09-16", "operacao": "compra", "ticker": "KNCR11", "classe": "fii", "setor": "outros", "qtd": 2, "preco": 105.91, "taxas": 0, "precoAtual": 0 },
     { "id": "nu20260924a", "date": "2026-09-24", "operacao": "compra", "ticker": "VGIR11", "classe": "fii", "setor": "outros", "qtd": 32, "preco": 9.21, "taxas": 0, "precoAtual": 0 },
     { "id": "nu20260925a", "date": "2026-09-25", "operacao": "compra", "ticker": "VGIR11", "classe": "fii", "setor": "outros", "qtd": 32, "preco": 9.21, "taxas": 0, "precoAtual": 0 },
-    { "id": "nu20260925b", "date": "2026-09-25", "operacao": "compra", "ticker": "MXRF11", "classe": "fii", "setor": "outros", "qtd": 5, "preco": 10.89, "taxas": 0, "precoAtual": 0 }
+    { "id": "nu20260925b", "date": "2026-09-25", "operacao": "compra", "ticker": "MXRF11", "classe": "fii", "setor": "outros", "qtd": 5, "preco": 10.89, "taxas": 0, "precoAtual": 0 },
+
+    { "id": "rf20260115a", "date": "2026-01-15", "operacao": "compra", "ticker": "NUBANK-RF", "classe": "renda-fixa", "setor": "financeiro", "qtd": 1, "preco": 4987.42, "taxas": 0, "precoAtual": 5467.83 }
   ],
-  "proventos": [],
+  "proventos": [
+    { "id": "pv20260228a", "date": "2026-02-28", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 29.20, "qtd": 1, "total": 29.20 },
+    { "id": "pv20260331a", "date": "2026-03-31", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 49.66, "qtd": 1, "total": 49.66 },
+    { "id": "pv20260430a", "date": "2026-04-30", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 63.25, "qtd": 1, "total": 63.25 },
+    { "id": "pv20260531a", "date": "2026-05-31", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 66.52, "qtd": 1, "total": 66.52 },
+    { "id": "pv20260630b", "date": "2026-06-30", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 63.76, "qtd": 1, "total": 63.76 },
+    { "id": "pv20260731a", "date": "2026-07-31", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 73.58, "qtd": 1, "total": 73.58 },
+    { "id": "pv20260831e", "date": "2026-08-31", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 67.15, "qtd": 1, "total": 67.15 },
+    { "id": "pv20260930a", "date": "2026-09-30", "ativo": "NUBANK-RF", "tipo": "rendimento", "valorCota": 67.29, "qtd": 1, "total": 67.29 }
+  ],
   "prices": {}
 }
