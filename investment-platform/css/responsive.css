@@ -1,0 +1,136 @@
+@media (max-width: 1024px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .top-bar {
+        padding: 0 12px;
+    }
+
+    .top-bar-right {
+        gap: 6px;
+    }
+
+    .cdi-control {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    .cdi-control input {
+        width: 48px;
+        font-size: 12px;
+    }
+
+    .main-nav {
+        padding: 0 8px;
+    }
+
+    .nav-tab {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .nav-tab svg {
+        display: none;
+    }
+
+    .content {
+        padding: 12px;
+    }
+
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .summary-card {
+        padding: 12px;
+    }
+
+    .card-value {
+        font-size: 18px;
+    }
+
+    .card {
+        padding: 14px;
+    }
+
+    .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .filters-row {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .filter-group select,
+    .filter-group input {
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .modal {
+        padding: 16px;
+        margin: 10px;
+    }
+
+    .chart-container { height: 220px; }
+    .chart-container.chart-lg { height: 280px; }
+
+    .watchlist-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .data-table {
+        font-size: 12px;
+    }
+
+    .data-table th, .data-table td {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .logo span {
+        font-size: 15px;
+    }
+
+    .card-value {
+        font-size: 16px;
+    }
+
+    .card-label {
+        font-size: 11px;
+    }
+
+    .fab {
+        bottom: 16px;
+        right: 16px;
+        width: 46px;
+        height: 46px;
+    }
+}

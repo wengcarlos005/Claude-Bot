@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InvestTracker - Plataforma de Investimentos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+</head>
+<body data-theme="dark">
+    <div id="app">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <div class="logo">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <rect width="28" height="28" rx="6" fill="var(--accent)"/>
+                        <path d="M7 20L12 10L17 14L21 7" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>InvestTracker</span>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="cdi-control">
+                    <label>CDI:</label>
+                    <input type="number" id="cdi-rate" value="13.15" step="0.01" min="0" max="50">
+                    <span>% a.a.</span>
+                </div>
+                <button class="btn-icon" id="btn-export" title="Exportar dados">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                </button>
+                <button class="btn-icon" id="btn-import" title="Importar dados">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                </button>
+                <input type="file" id="import-file" accept=".json" style="display:none">
+                <button class="btn-icon" id="btn-theme" title="Alternar tema">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <nav class="main-nav">
+            <button class="nav-tab active" data-tab="dashboard">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </button>
+            <button class="nav-tab" data-tab="patrimonio">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                Patrimônio
+            </button>
+            <button class="nav-tab" data-tab="proventos">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                Proventos
+            </button>
+            <button class="nav-tab" data-tab="rentabilidade">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+                Rentabilidade
+            </button>
+            <button class="nav-tab" data-tab="composicao">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>
+                Composição
+            </button>
+            <button class="nav-tab" data-tab="transacoes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Transações
+            </button>
+            <button class="nav-tab" data-tab="seguindo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Seguindo
+            </button>
+        </nav>
+
+        <main class="content">
+            <!-- Dashboard -->
+            <section id="tab-dashboard" class="tab-content active">
+                <div class="summary-cards">
+                    <div class="card summary-card">
+                        <div class="card-label">Patrimônio Total</div>
+                        <div class="card-value" id="dash-patrimonio">R$ 0,00</div>
+                        <div class="card-change positive" id="dash-patrimonio-change">+0,00%</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Proventos (Mês)</div>
+                        <div class="card-value" id="dash-proventos-mes">R$ 0,00</div>
+                        <div class="card-change" id="dash-proventos-change">0 proventos</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Proventos (12M)</div>
+                        <div class="card-value" id="dash-proventos-ano">R$ 0,00</div>
+                        <div class="card-change" id="dash-yield">Yield: 0,00%</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Rentabilidade Total</div>
+                        <div class="card-value" id="dash-rentabilidade">0,00%</div>
+                        <div class="card-change" id="dash-vs-cdi">vs CDI: 0,00%</div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Evolução do Patrimônio</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-dash-patrimonio"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Composição da Carteira</h3>
+                        </div>
+                        <div class="chart-container chart-pie">
+                            <canvas id="chart-dash-composicao"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Proventos Mensais</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-dash-proventos"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Maiores Posições</h3>
+                        </div>
+                        <div class="table-wrapper" id="dash-top-positions">
+                            <table class="data-table">
+                                <thead><tr><th>Ativo</th><th>Tipo</th><th>Valor</th><th>%</th></tr></thead>
+                                <tbody id="dash-top-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Patrimonio -->
+            <section id="tab-patrimonio" class="tab-content">
+                <div class="summary-cards">
+                    <div class="card summary-card">
+                        <div class="card-label">Patrimônio Total</div>
+                        <div class="card-value" id="pat-total">R$ 0,00</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Total Investido</div>
+                        <div class="card-value" id="pat-investido">R$ 0,00</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Lucro/Prejuízo</div>
+                        <div class="card-value" id="pat-lucro">R$ 0,00</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Nº de Ativos</div>
+                        <div class="card-value" id="pat-ativos">0</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Evolução do Patrimônio</h3>
+                        <div class="chart-period-btns">
+                            <button class="period-btn active" data-period="6m">6M</button>
+                            <button class="period-btn" data-period="1y">1A</button>
+                            <button class="period-btn" data-period="2y">2A</button>
+                            <button class="period-btn" data-period="all">Tudo</button>
+                        </div>
+                    </div>
+                    <div class="chart-container chart-lg">
+                        <canvas id="chart-patrimonio"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Ativos na Carteira</h3>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ativo</th>
+                                    <th>Tipo</th>
+                                    <th>Qtd</th>
+                                    <th>Preço Médio</th>
+                                    <th>Preço Atual</th>
+                                    <th>Total Investido</th>
+                                    <th>Valor Atual</th>
+                                    <th>Lucro/Prejuízo</th>
+                                    <th>Rent. %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pat-assets-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Proventos -->
+            <section id="tab-proventos" class="tab-content">
+                <div class="section-header">
+                    <h2>Proventos</h2>
+                    <button class="btn btn-primary" id="btn-add-provento">+ Adicionar Provento</button>
+                </div>
+                <div class="summary-cards">
+                    <div class="card summary-card">
+                        <div class="card-label">Proventos (Mês Atual)</div>
+                        <div class="card-value" id="prov-mes">R$ 0,00</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Proventos (Ano)</div>
+                        <div class="card-value" id="prov-ano">R$ 0,00</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Proventos (12M)</div>
+                        <div class="card-value" id="prov-12m">R$ 0,00</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Yield on Cost (12M)</div>
+                        <div class="card-value" id="prov-yield">0,00%</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Proventos Mensais</h3>
+                    </div>
+                    <div class="chart-container chart-lg">
+                        <canvas id="chart-proventos"></canvas>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Por Tipo de Provento</h3>
+                        </div>
+                        <div class="chart-container chart-pie">
+                            <canvas id="chart-proventos-tipo"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Maiores Pagadores</h3>
+                        </div>
+                        <div class="chart-container chart-pie">
+                            <canvas id="chart-proventos-ativos"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Histórico de Proventos</h3>
+                        <div class="filters-inline">
+                            <select id="prov-filter-type">
+                                <option value="">Todos os tipos</option>
+                                <option value="dividendo">Dividendo</option>
+                                <option value="jcp">JCP</option>
+                                <option value="rendimento">Rendimento</option>
+                                <option value="aluguel">Aluguel</option>
+                            </select>
+                            <select id="prov-filter-asset">
+                                <option value="">Todos os ativos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Ativo</th>
+                                    <th>Tipo</th>
+                                    <th>Valor/Cota</th>
+                                    <th>Qtd Cotas</th>
+                                    <th>Total</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prov-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Rentabilidade -->
+            <section id="tab-rentabilidade" class="tab-content">
+                <div class="summary-cards">
+                    <div class="card summary-card">
+                        <div class="card-label">Rentabilidade Total</div>
+                        <div class="card-value" id="rent-total">0,00%</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Rentabilidade (Mês)</div>
+                        <div class="card-value" id="rent-mes">0,00%</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">Rentabilidade (Ano)</div>
+                        <div class="card-value" id="rent-ano">0,00%</div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="card-label">% do CDI</div>
+                        <div class="card-value" id="rent-cdi">0,00%</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Rentabilidade vs CDI</h3>
+                        <div class="chart-period-btns">
+                            <button class="period-btn active" data-period="6m">6M</button>
+                            <button class="period-btn" data-period="1y">1A</button>
+                            <button class="period-btn" data-period="2y">2A</button>
+                            <button class="period-btn" data-period="all">Tudo</button>
+                        </div>
+                    </div>
+                    <div class="chart-container chart-lg">
+                        <canvas id="chart-rentabilidade"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Rentabilidade Mensal</h3>
+                    </div>
+                    <div class="chart-container chart-lg">
+                        <canvas id="chart-rent-mensal"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Rentabilidade por Ativo</h3>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ativo</th>
+                                    <th>Tipo</th>
+                                    <th>Rent. Total</th>
+                                    <th>Rent. Mês</th>
+                                    <th>Rent. Ano</th>
+                                    <th>vs CDI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rent-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Composicao -->
+            <section id="tab-composicao" class="tab-content">
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Por Tipo de Ativo</h3>
+                        </div>
+                        <div class="chart-container chart-pie-lg">
+                            <canvas id="chart-comp-tipo"></canvas>
+                        </div>
+                        <div class="legend-list" id="comp-tipo-legend"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Por Setor</h3>
+                        </div>
+                        <div class="chart-container chart-pie-lg">
+                            <canvas id="chart-comp-setor"></canvas>
+                        </div>
+                        <div class="legend-list" id="comp-setor-legend"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Detalhamento por Ativo</h3>
+                    </div>
+                    <div class="chart-container chart-lg">
+                        <canvas id="chart-comp-ativos"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Tabela de Alocação</h3>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ativo</th>
+                                    <th>Tipo</th>
+                                    <th>Setor</th>
+                                    <th>Valor</th>
+                                    <th>% Carteira</th>
+                                    <th>% Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comp-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transacoes -->
+            <section id="tab-transacoes" class="tab-content">
+                <div class="section-header">
+                    <h2>Transações</h2>
+                    <button class="btn btn-primary" id="btn-add-transacao">+ Nova Transação</button>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Filtros</h3>
+                    </div>
+                    <div class="filters-row">
+                        <div class="filter-group">
+                            <label>Tipo</label>
+                            <select id="trans-filter-operation">
+                                <option value="">Todas</option>
+                                <option value="compra">Compra</option>
+                                <option value="venda">Venda</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Classe</label>
+                            <select id="trans-filter-class">
+                                <option value="">Todas</option>
+                                <option value="acao">Ações</option>
+                                <option value="fii">FIIs</option>
+                                <option value="bdr">BDRs</option>
+                                <option value="etf">ETFs</option>
+                                <option value="fundo">Fundos</option>
+                                <option value="renda-fixa">Renda Fixa</option>
+                                <option value="cripto">Criptomoedas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>De</label>
+                            <input type="date" id="trans-filter-from">
+                        </div>
+                        <div class="filter-group">
+                            <label>Até</label>
+                            <input type="date" id="trans-filter-to">
+                        </div>
+                        <div class="filter-group">
+                            <label>Ativo</label>
+                            <input type="text" id="trans-filter-ticker" placeholder="Ex: PETR4">
+                        </div>
+                        <button class="btn btn-secondary" id="btn-clear-filters">Limpar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Operação</th>
+                                    <th>Ativo</th>
+                                    <th>Classe</th>
+                                    <th>Qtd</th>
+                                    <th>Preço Unit.</th>
+                                    <th>Taxas</th>
+                                    <th>Total</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trans-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="trans-pagination"></div>
+                </div>
+            </section>
+
+            <!-- Seguindo -->
+            <section id="tab-seguindo" class="tab-content">
+                <div class="section-header">
+                    <h2>Seguindo</h2>
+                    <button class="btn btn-primary" id="btn-add-seguindo">+ Seguir Ativo</button>
+                </div>
+                <div class="watchlist-grid" id="watchlist-grid"></div>
+                <div class="empty-state" id="seguindo-empty">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <h3>Nenhum ativo seguido</h3>
+                    <p>Adicione ativos para acompanhar sem precisar comprar</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Transaction -->
+    <div class="modal-overlay" id="modal-transacao">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-trans-title">Nova Transação</h3>
+                <button class="btn-close" data-close="modal-transacao">&times;</button>
+            </div>
+            <form id="form-transacao">
+                <input type="hidden" id="trans-edit-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Operação</label>
+                        <select id="trans-operacao" required>
+                            <option value="compra">Compra</option>
+                            <option value="venda">Venda</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="trans-data" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ticker / Nome</label>
+                        <input type="text" id="trans-ticker" placeholder="Ex: PETR4" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Classe do Ativo</label>
+                        <select id="trans-classe" required>
+                            <option value="acao">Ação</option>
+                            <option value="fii">FII</option>
+                            <option value="bdr">BDR</option>
+                            <option value="etf">ETF</option>
+                            <option value="fundo">Fundo</option>
+                            <option value="renda-fixa">Renda Fixa</option>
+                            <option value="cripto">Criptomoeda</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Setor</label>
+                        <select id="trans-setor">
+                            <option value="financeiro">Financeiro</option>
+                            <option value="energia">Energia</option>
+                            <option value="petroleo">Petróleo e Gás</option>
+                            <option value="mineracao">Mineração</option>
+                            <option value="varejo">Varejo</option>
+                            <option value="saude">Saúde</option>
+                            <option value="tecnologia">Tecnologia</option>
+                            <option value="imobiliario">Imobiliário</option>
+                            <option value="industrial">Industrial</option>
+                            <option value="consumo">Consumo</option>
+                            <option value="telecomunicacao">Telecomunicação</option>
+                            <option value="utilidades">Utilidades</option>
+                            <option value="agro">Agronegócio</option>
+                            <option value="logistica">Logística</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quantidade</label>
+                        <input type="number" id="trans-qtd" step="0.000001" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Preço Unitário (R$)</label>
+                        <input type="number" id="trans-preco" step="0.01" min="0" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Taxas (R$)</label>
+                        <input type="number" id="trans-taxas" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço Atual (R$)</label>
+                        <input type="number" id="trans-preco-atual" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="modal-transacao">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Provento -->
+    <div class="modal-overlay" id="modal-provento">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-prov-title">Adicionar Provento</h3>
+                <button class="btn-close" data-close="modal-provento">&times;</button>
+            </div>
+            <form id="form-provento">
+                <input type="hidden" id="prov-edit-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ativo</label>
+                        <select id="prov-ativo" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="prov-data" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="prov-tipo" required>
+                            <option value="dividendo">Dividendo</option>
+                            <option value="jcp">JCP</option>
+                            <option value="rendimento">Rendimento</option>
+                            <option value="aluguel">Aluguel</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor por Cota (R$)</label>
+                        <input type="number" id="prov-valor-cota" step="0.000001" min="0" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quantidade de Cotas</label>
+                        <input type="number" id="prov-qtd" step="0.000001" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Total (R$)</label>
+                        <input type="number" id="prov-total" step="0.01" readonly>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="modal-provento">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Seguir Ativo -->
+    <div class="modal-overlay" id="modal-seguindo">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Seguir Ativo</h3>
+                <button class="btn-close" data-close="modal-seguindo">&times;</button>
+            </div>
+            <form id="form-seguindo">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ticker / Nome</label>
+                        <input type="text" id="seg-ticker" placeholder="Ex: VALE3" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Classe</label>
+                        <select id="seg-classe" required>
+                            <option value="acao">Ação</option>
+                            <option value="fii">FII</option>
+                            <option value="bdr">BDR</option>
+                            <option value="etf">ETF</option>
+                            <option value="fundo">Fundo</option>
+                            <option value="renda-fixa">Renda Fixa</option>
+                            <option value="cripto">Criptomoeda</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Preço Atual (R$)</label>
+                        <input type="number" id="seg-preco" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Preço Alvo (R$)</label>
+                        <input type="number" id="seg-alvo" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea id="seg-notas" rows="2" placeholder="Observações sobre o ativo..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="modal-seguindo">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Atualizar Preço -->
+    <div class="modal-overlay" id="modal-preco">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Atualizar Preços</h3>
+                <button class="btn-close" data-close="modal-preco">&times;</button>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr><th>Ativo</th><th>Preço Atual</th><th>Novo Preço</th></tr></thead>
+                    <tbody id="preco-tbody"></tbody>
+                </table>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-secondary" data-close="modal-preco">Cancelar</button>
+                <button class="btn btn-primary" id="btn-save-precos">Salvar Preços</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="fab" id="btn-update-prices" title="Atualizar Preços">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+
+    <script src="js/store.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
