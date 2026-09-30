@@ -40,19 +40,36 @@ const PriceAPI = {
         return results;
     },
 
-    async fetchDividends(ticker, token) {
-        if (!token) return [];
-        try {
-            const url = `${this.BASE_URL}/quote/${ticker}?dividends=true&token=${token}`;
-            const resp = await fetch(url);
-            const data = await resp.json();
-            const divs = data.results?.[0]?.dividendsData?.cashDividends || [];
-            console.log('[brapi] dividends', ticker, divs.length);
-            return divs;
-        } catch (e) {
-            console.error('Dividend fetch error:', ticker, e);
-            return [];
+    async fetchDividendsBatch(tickers, token) {
+        if (!token || tickers.length === 0) return {};
+        const results = {};
+        for (let i = 0; i < tickers.length; i += 5) {
+            const batch = tickers.slice(i, i + 5);
+            try {
+                const url = `${this.BASE_URL}/quote/${batch.join(',')}?dividends=true&token=${token}`;
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                if (data.results) {
+                    for (const r of data.results) {
+                        const sym = (r.symbol || '').toUpperCase();
+                        results[sym] = r.dividendsData?.cashDividends || [];
+                    }
+                }
+            } catch (e) {
+                for (const ticker of batch) {
+                    try {
+                        const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?dividends=true&token=${token}`);
+                        if (!r2.ok) continue;
+                        const d2 = await r2.json();
+                        const sym = (d2.results?.[0]?.symbol || ticker).toUpperCase();
+                        results[sym] = d2.results?.[0]?.dividendsData?.cashDividends || [];
+                    } catch (e2) {}
+                }
+            }
+            if (i + 5 < tickers.length) await new Promise(r => setTimeout(r, 300));
         }
+        return results;
     },
 
     async updateAllPrices(token) {

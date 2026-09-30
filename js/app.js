@@ -451,13 +451,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tx.operacao === 'compra' && (!firstBuy[k] || tx.date < firstBuy[k])) firstBuy[k] = tx.date;
             }
 
+            const allDivs = await PriceAPI.fetchDividendsBatch(tickers, token);
             const rows = [];
-            const results = await Promise.all(tickers.slice(0, 15).map(async ticker => {
-                try { return { ticker, divs: await PriceAPI.fetchDividends(ticker, token) }; }
-                catch (e) { return { ticker, divs: [] }; }
-            }));
 
-            for (const { ticker, divs } of results) {
+            for (const [ticker, divs] of Object.entries(allDivs)) {
                 for (const d of divs) {
                     const payDate = String(d.paymentDate || '').slice(0, 10);
                     const baseDate = String(d.lastDatePrior || '').slice(0, 10);
