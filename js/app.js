@@ -171,7 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ==================== DASHBOARD ====================
         renderDashboard() {
-            const { portfolio, totalValue, totalInvested, proventos } = this.cache;
+            const { portfolio, totalValue, totalInvested } = this.cache;
+            const proventos = this._getAllProventos();
             const profit = totalValue - totalInvested;
             const profitPct = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
 
@@ -212,27 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         _renderDashPatrimonioChart() {
-            const { snapshots, transactions, prices, totalValue } = this.cache;
-            const txs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-            if (txs.length === 0) return;
-
-            if (snapshots.length >= 2) {
-                Charts.createLine('chart-dash-patrimonio', snapshots.map(s => Utils.formatDateShort(s.date)), [{ data: snapshots.map(s => s.value), label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
-            } else {
-                const months = Utils.getMonthsRange(txs[0].date.slice(0, 7), Utils.todayStr().slice(0, 7));
-                const labels = months.map(m => Utils.formatDateShort(m + '-01'));
-                const values = [];
-                let rv = 0;
-                for (const month of months) {
-                    for (const tx of txs.filter(t => t.date.startsWith(month))) {
-                        const p = prices[tx.ticker.toUpperCase()] || tx.preco;
-                        if (tx.operacao === 'compra') rv += tx.qtd * p; else rv -= tx.qtd * p;
-                    }
-                    values.push(Math.max(0, rv));
-                }
-                if (values.length > 0) values[values.length - 1] = totalValue;
-                Charts.createLine('chart-dash-patrimonio', labels, [{ data: values, label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
-            }
+            this._drawPatrimonioChart('chart-dash-patrimonio', 'all');
         },
 
         _renderDashComposicaoChart(portfolio) {
@@ -273,9 +254,219 @@ document.addEventListener('DOMContentLoaded', () => {
             `).join('') || '<tr><td colspan="4" class="no-data">Nenhum ativo na carteira</td></tr>';
         },
 
+        // ==================== HELPERS: CDI / SERIES ====================
+        patPeriod: '6m',
+
+        _getCdiRate() {
+            return parseFloat(document.getElementById('cdi-rate').value) || 13.15;
+        },
+
+        // Fator de acumulo (juros compostos em dias uteis, base 252) entre duas datas.
+        // cdiPct = % do CDI (100 = 100% do CDI). Mesma convencao de DB._calcRendaFixa.
+        _cdiFactor(fromDate, toDate, cdiRate, cdiPct = 100) {
+            const days = (new Date(toDate + 'T12:00:00') - new Date(fromDate + 'T12:00:00')) / 86400000;
+            if (!(days > 0)) return 1;
+            const effectiveRate = (cdiRate / 100) * (cdiPct / 100);
+            const bizDays = Math.floor(days * 252 / 365);
+            return Math.pow(1 + effectiveRate, bizDays / 252);
+        },
+
+        _monthEnd(month) {
+            const [y, m] = month.split('-').map(Number);
+            return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+        },
+
+        _addDays(dateStr, n) {
+            const d = new Date(dateStr + 'T12:00:00');
+            d.setDate(d.getDate() + n);
+            return d.toISOString().slice(0, 10);
+        },
+
+        // Datas dos pontos do grafico: semanal para historicos curtos, fim de mes para os longos.
+        _seriesDates(first, today) {
+            const dates = [first];
+            const span = (new Date(today + 'T12:00:00') - new Date(first + 'T12:00:00')) / 86400000;
+            if (span <= 120) {
+                for (let d = this._addDays(first, 7); d < today; d = this._addDays(d, 7)) dates.push(d);
+            } else {
+                for (const month of Utils.getMonthsRange(first.slice(0, 7), today.slice(0, 7))) {
+                    const end = this._monthEnd(month);
+                    if (end > first && end < today) dates.push(end);
+                }
+            }
+            if (today > first) dates.push(today);
+            return dates;
+        },
+
+        // Serie de patrimonio: [{ date, value, invested, cdi }]
+        // cdi = quanto o mesmo dinheiro (mesmos aportes/resgates, nas mesmas datas) valeria a 100% do CDI.
+        _buildPatrimonioSeries() {
+            const { snapshots, transactions, prices, totalValue, totalInvested } = this.cache;
+            const txs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+            if (txs.length === 0) return [];
+            const today = Utils.todayStr();
+            const cdiRate = this._getCdiRate();
+            let points;
+
+            if (snapshots.length >= 2) {
+                points = snapshots.map(s => ({ date: s.date, value: s.value, invested: s.invested }));
+                if (points[points.length - 1].date < today) points.push({ date: today, value: totalValue, invested: totalInvested });
+            } else {
+                // Sem historico de snapshots: reconstroi a partir das transacoes.
+                // Renda fixa e valorizada pelo CDI; demais ativos pelo preco atual (nao ha cotacao historica).
+                points = this._seriesDates(txs[0].date, today).map(date => {
+                    const holdings = {};
+                    let rfValue = 0, rfInvested = 0;
+                    for (const tx of txs) {
+                        if (tx.date > date) break;
+                        const key = tx.ticker.toUpperCase();
+                        if (tx.classe === 'renda-fixa') {
+                            if (tx.operacao === 'compra') {
+                                const principal = tx.qtd * tx.preco;
+                                rfInvested += principal;
+                                rfValue += principal * this._cdiFactor(tx.date, date, cdiRate, tx.precoAtual || 100);
+                            }
+                            continue;
+                        }
+                        const h = holdings[key] || (holdings[key] = { qtd: 0, cost: 0, last: tx.preco });
+                        h.last = tx.preco;
+                        if (tx.operacao === 'compra') {
+                            h.qtd += tx.qtd;
+                            h.cost += tx.qtd * tx.preco + (tx.taxas || 0);
+                        } else if (h.qtd > 0) {
+                            const ratio = Math.min(tx.qtd / h.qtd, 1);
+                            h.cost -= h.cost * ratio;
+                            h.qtd = Math.max(0, h.qtd - tx.qtd);
+                        }
+                    }
+                    let value = rfValue, invested = rfInvested;
+                    for (const [key, h] of Object.entries(holdings)) {
+                        if (h.qtd <= 0.000001) continue;
+                        value += h.qtd * (prices[key] || h.last);
+                        invested += h.cost;
+                    }
+                    if (date === today) return { date, value: totalValue, invested: totalInvested };
+                    return { date, value, invested };
+                });
+            }
+
+            // Benchmark CDI: cada aporte rende CDI desde a sua data; resgates saem do saldo.
+            const flows = txs
+                .filter(tx => !(tx.classe === 'renda-fixa' && tx.operacao !== 'compra'))
+                .map(tx => ({
+                    date: tx.date,
+                    amount: tx.operacao === 'compra' ? tx.qtd * tx.preco + (tx.taxas || 0) : -(tx.qtd * tx.preco - (tx.taxas || 0)),
+                }));
+            for (const p of points) {
+                let cdi = 0;
+                for (const f of flows) {
+                    if (f.date > p.date) break;
+                    cdi += f.amount * this._cdiFactor(f.date, p.date, cdiRate, 100);
+                }
+                p.cdi = Math.max(0, cdi);
+            }
+            return points;
+        },
+
+        _filterByPeriod(points, period) {
+            if (period === 'all' || points.length === 0) return points;
+            const months = { '6m': 6, '1y': 12, '2y': 24 }[period] || 6;
+            const d = new Date();
+            d.setMonth(d.getMonth() - months);
+            const cutoff = d.toISOString().slice(0, 10);
+            const filtered = points.filter(p => p.date >= cutoff);
+            return filtered.length >= 2 ? filtered : points.slice(-2);
+        },
+
+        _drawPatrimonioChart(canvasId, period) {
+            const all = this._buildPatrimonioSeries();
+            if (all.length === 0) { Charts.destroy(canvasId); return; }
+            const points = this._filterByPeriod(all, period);
+            const span = points.length > 1
+                ? (new Date(points[points.length - 1].date + 'T12:00:00') - new Date(points[0].date + 'T12:00:00')) / 86400000
+                : 0;
+            const labels = points.map(p => span <= 200 ? Utils.formatDate(p.date).slice(0, 5) : Utils.formatDateShort(p.date));
+            const colors = Utils.getChartColors();
+            const gray = Charts.getThemeColors().text || '#8b949e';
+
+            Charts.createLine(canvasId, labels, [
+                { label: 'Patrimônio', data: points.map(p => p.value), color: colors[0], fill: true },
+                { label: 'Total Investido', data: points.map(p => p.invested), color: gray },
+                { label: 'CDI (benchmark)', data: points.map(p => p.cdi), color: colors[5], dashed: true, pointRadius: 0 },
+            ], {
+                tooltipCallbacks: {
+                    title: items => items.length ? Utils.formatDate(points[items[0].dataIndex].date) : '',
+                    label: ctx => ` ${ctx.dataset.label}: ${Utils.formatCurrency(ctx.raw)}`,
+                },
+            });
+        },
+
+        _bindPatrimonioPeriodBtns() {
+            const btns = document.querySelectorAll('#tab-patrimonio .period-btn');
+            btns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.period === this.patPeriod);
+                if (!btn._bound) {
+                    btn._bound = true;
+                    btn.addEventListener('click', () => {
+                        this.patPeriod = btn.dataset.period;
+                        document.querySelectorAll('#tab-patrimonio .period-btn')
+                            .forEach(b => b.classList.toggle('active', b === btn));
+                        this._drawPatrimonioChart('chart-patrimonio', this.patPeriod);
+                    });
+                }
+            });
+        },
+
+        // Rendimentos mensais estimados da renda fixa (CDI x % do CDI), um lancamento por ativo/mes fechado.
+        // Meses em que o usuario ja registrou um provento manual para o ativo nao sao gerados.
+        _getSyntheticProventos() {
+            const { transactions, proventos } = this.cache;
+            const cdiRate = this._getCdiRate();
+            const today = Utils.todayStr();
+            const byKey = new Map();
+
+            for (const tx of transactions) {
+                if (tx.classe !== 'renda-fixa' || tx.operacao !== 'compra') continue;
+                const ticker = tx.ticker.toUpperCase();
+                const pct = tx.precoAtual || 100;
+                const principal = tx.qtd * tx.preco;
+                let prevBalance = principal;
+                for (const month of Utils.getMonthsRange(tx.date.slice(0, 7), today.slice(0, 7))) {
+                    const end = this._monthEnd(month);
+                    if (end > today) break;
+                    const balance = principal * this._cdiFactor(tx.date, end, cdiRate, pct);
+                    const yieldValue = balance - prevBalance;
+                    prevBalance = balance;
+                    if (yieldValue < 0.005) continue;
+                    const key = `${ticker}|${month}`;
+                    const cur = byKey.get(key) || { date: end, ativo: ticker, total: 0, qtd: 0 };
+                    cur.total += yieldValue;
+                    cur.qtd += tx.qtd;
+                    byKey.set(key, cur);
+                }
+            }
+
+            const manual = new Set(proventos.map(p => `${p.ativo.toUpperCase()}|${p.date.slice(0, 7)}`));
+            const out = [];
+            for (const [key, v] of byKey) {
+                if (manual.has(key)) continue;
+                out.push({
+                    id: `rf-${key}`, date: v.date, ativo: v.ativo, tipo: 'rendimento',
+                    valorCota: v.qtd > 0 ? v.total / v.qtd : v.total, qtd: v.qtd, total: v.total, synthetic: true,
+                });
+            }
+            return out;
+        },
+
+        // Proventos registrados + rendimentos estimados da renda fixa, do mais recente ao mais antigo.
+        _getAllProventos() {
+            return [...this.cache.proventos, ...this._getSyntheticProventos()]
+                .sort((a, b) => b.date.localeCompare(a.date));
+        },
+
         // ==================== PATRIMONIO ====================
         renderPatrimonio() {
-            const { portfolio, totalValue, totalInvested, snapshots, transactions, prices } = this.cache;
+            const { portfolio, totalValue, totalInvested } = this.cache;
             const profit = totalValue - totalInvested;
 
             document.getElementById('pat-total').textContent = Utils.formatCurrency(totalValue);
@@ -285,26 +476,8 @@ document.addEventListener('DOMContentLoaded', () => {
             lucroEl.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
             document.getElementById('pat-ativos').textContent = Object.keys(portfolio).length;
 
-            const txs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-            if (txs.length > 0) {
-                if (snapshots.length >= 2) {
-                    Charts.createLine('chart-patrimonio', snapshots.map(s => Utils.formatDateShort(s.date)), [{ data: snapshots.map(s => s.value), label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
-                } else {
-                    const months = Utils.getMonthsRange(txs[0].date.slice(0, 7), Utils.todayStr().slice(0, 7));
-                    const labels = months.map(m => Utils.formatDateShort(m + '-01'));
-                    const values = [];
-                    let rv = 0;
-                    for (const month of months) {
-                        for (const tx of txs.filter(t => t.date.startsWith(month))) {
-                            const p = prices[tx.ticker.toUpperCase()] || tx.preco;
-                            if (tx.operacao === 'compra') rv += tx.qtd * p; else rv -= tx.qtd * p;
-                        }
-                        values.push(Math.max(0, rv));
-                    }
-                    if (values.length > 0) values[values.length - 1] = totalValue;
-                    Charts.createLine('chart-patrimonio', labels, [{ data: values, label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
-                }
-            }
+            this._bindPatrimonioPeriodBtns();
+            this._drawPatrimonioChart('chart-patrimonio', this.patPeriod);
 
             const sorted = Object.values(portfolio).sort((a, b) => b.currentValue - a.currentValue);
             document.getElementById('pat-assets-tbody').innerHTML = sorted.map(h => `
@@ -324,7 +497,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ==================== PROVENTOS ====================
         renderProventos() {
-            const { proventos, totalInvested } = this.cache;
+            const { totalInvested } = this.cache;
+            const proventos = this._getAllProventos();
             const now = new Date();
             const thisMonth = now.toISOString().slice(0, 7);
             const thisYear = String(now.getFullYear());
@@ -354,7 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         _populateProventoAssetFilter() {
-            const { portfolio, proventos } = this.cache;
+            const { portfolio } = this.cache;
+            const proventos = this._getAllProventos();
             const select = document.getElementById('prov-filter-asset');
             const current = select.value;
             select.innerHTML = '<option value="">Todos os ativos</option>';
@@ -366,7 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
         _renderProventosTable() {
             const filterType = document.getElementById('prov-filter-type').value;
             const filterAsset = document.getElementById('prov-filter-asset').value;
-            let filtered = this.cache.proventos;
+            let filtered = this._getAllProventos();
             if (filterType) filtered = filtered.filter(p => p.tipo === filterType);
             if (filterAsset) filtered = filtered.filter(p => p.ativo === filterAsset);
 
@@ -378,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="mono">${Utils.formatCurrency(p.valorCota)}</td>
                     <td class="mono">${Utils.formatNumber(p.qtd, p.qtd < 1 ? 6 : 0)}</td>
                     <td class="mono text-green">${Utils.formatCurrency(p.total)}</td>
+                    ${p.synthetic ? '<td><span style="color:var(--text-muted)" title="Calculado automaticamente a partir do CDI">Estimado</span></td>' : `
                     <td>
                         <div class="action-btns">
                             <button class="action-btn" onclick="App.editProvento('${p.id}')" title="Editar">
@@ -388,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </button>
                         </div>
                     </td>
+                    `}
                 </tr>
             `).join('') || '<tr><td colspan="7" class="no-data">Nenhum provento registrado</td></tr>';
         },
@@ -617,40 +794,74 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!container) return;
             const token = this._getBrapiToken();
             const portfolio = this.cache.portfolio || {};
-            const tickers = Object.keys(portfolio);
+            const today = Utils.todayStr();
 
-            if (!token) {
-                container.innerHTML = '<div class="empty-state"><p>Configure seu token brapi.dev no topo da pagina para ver o calendario de proventos</p></div>';
+            // Proventos do usuario (registrados + rendimentos estimados da renda fixa)
+            const rows = this._getAllProventos().map(p => ({
+                date: p.date, ativo: p.ativo,
+                tipo: Utils.getProventoTypeLabel(p.tipo),
+                valorCota: p.valorCota, qtd: p.qtd, total: p.total,
+                origem: p.synthetic ? 'estimado' : 'meu',
+            }));
+
+            // Proventos publicados (brapi.dev) apenas para ativos de renda variavel da carteira
+            const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
+            let brapiFailed = false;
+            if (token && tickers.length > 0) {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">Carregando proventos...</div>';
+                const firstBuy = {};
+                for (const tx of this.cache.transactions) {
+                    const k = tx.ticker.toUpperCase();
+                    if (tx.operacao === 'compra' && (!firstBuy[k] || tx.date < firstBuy[k])) firstBuy[k] = tx.date;
+                }
+                const results = await Promise.all(tickers.slice(0, 10).map(async ticker => {
+                    try { return { ticker, divs: await PriceAPI.fetchDividends(ticker, token) }; }
+                    catch (e) { brapiFailed = true; return { ticker, divs: [] }; }
+                }));
+                for (const { ticker, divs } of results) {
+                    for (const d of divs) {
+                        const date = String(d.paymentDate || d.lastDatePrior || d.approvedOn || '').slice(0, 10);
+                        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+                        if (firstBuy[ticker] && date < firstBuy[ticker]) continue;
+                        const rate = Number(d.rate || 0);
+                        // Ja registrado pelo usuario (mesmo ativo, mesmo mes e valor por cota equivalente)
+                        const dup = rows.some(r => r.origem === 'meu' && r.ativo.toUpperCase() === ticker
+                            && r.date.slice(0, 7) === date.slice(0, 7) && Math.abs(r.valorCota - rate) < 0.01);
+                        if (dup) continue;
+                        const qtd = portfolio[ticker].qtd;
+                        rows.push({
+                            date, ativo: ticker, tipo: d.label || 'Dividendo',
+                            valorCota: rate, qtd, total: rate * qtd, origem: 'brapi',
+                        });
+                    }
+                }
+            }
+
+            rows.sort((a, b) => b.date.localeCompare(a.date));
+            const shown = rows.slice(0, 100);
+
+            if (shown.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nenhum provento encontrado. Adicione proventos na aba Proventos'
+                    + (token ? '' : ' ou configure seu token brapi.dev no topo da pagina para buscar dividendos dos seus ativos')
+                    + '.</p></div>';
                 return;
             }
 
-            if (tickers.length === 0) {
-                container.innerHTML = '<div class="empty-state"><p>Adicione ativos na sua carteira para ver o calendario de proventos</p></div>';
-                return;
+            const origemLabel = { meu: 'Meu registro', estimado: 'Estimado (CDI)', brapi: 'brapi.dev' };
+            let html = '<div class="card"><div class="card-header"><h3>Proventos dos seus Ativos</h3></div>';
+            if (!token && tickers.length > 0) {
+                html += '<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">Configure seu token brapi.dev no topo da pagina para incluir tambem os dividendos publicados das suas acoes e FIIs.</p>';
+            } else if (brapiFailed) {
+                html += '<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">Nao foi possivel carregar todos os dados da brapi.dev.</p>';
             }
-
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">Carregando proventos...</div>';
-
-            const allDividends = [];
-            for (const ticker of tickers.slice(0, 10)) {
-                const divs = await PriceAPI.fetchDividends(ticker, token);
-                divs.forEach(d => allDividends.push({ ...d, ticker }));
-            }
-
-            allDividends.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-
-            const recent = allDividends.slice(0, 50);
-
-            if (recent.length === 0) {
-                container.innerHTML = '<div class="empty-state"><p>Nenhum provento encontrado para seus ativos</p></div>';
-                return;
-            }
-
-            let html = '<div class="card"><div class="card-header"><h3>Proventos dos seus Ativos (brapi.dev)</h3></div>';
-            html += '<div class="table-wrapper"><table class="data-table"><thead><tr><th>Data Pgto</th><th>Ativo</th><th>Tipo</th><th>Valor/Cota</th></tr></thead><tbody>';
-            for (const d of recent) {
-                const date = d.paymentDate ? new Date(d.paymentDate).toLocaleDateString('pt-BR') : '-';
-                html += `<tr><td>${date}</td><td><strong>${Utils.escapeHtml(d.ticker)}</strong></td><td>${Utils.escapeHtml(d.label || 'Dividendo')}</td><td>R$ ${Number(d.rate || 0).toFixed(4)}</td></tr>`;
+            html += '<div class="table-wrapper"><table class="data-table"><thead><tr><th>Data Pgto</th><th>Ativo</th><th>Tipo</th><th>Valor/Cota</th><th>Qtd</th><th>Total</th><th>Origem</th></tr></thead><tbody>';
+            for (const r of shown) {
+                const future = r.date > today ? ' <span class="badge badge-compra">Futuro</span>' : '';
+                html += `<tr><td>${Utils.formatDate(r.date)}${future}</td><td><strong>${Utils.escapeHtml(r.ativo)}</strong></td><td>${Utils.escapeHtml(r.tipo)}</td>`
+                    + `<td class="mono">R$ ${Number(r.valorCota || 0).toFixed(4)}</td>`
+                    + `<td class="mono">${Utils.formatNumber(r.qtd, r.qtd < 1 ? 6 : 0)}</td>`
+                    + `<td class="mono text-green">${Utils.formatCurrency(r.total)}</td>`
+                    + `<td>${origemLabel[r.origem]}</td></tr>`;
             }
             html += '</tbody></table></div></div>';
             container.innerHTML = html;
@@ -941,7 +1152,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.addEventListener('change', async (e) => {
                     const rate = parseFloat(e.target.value) || 13.15;
                     await DB.updateSettings({ cdi_rate: rate });
-                    if (this.currentTab === 'rentabilidade' || this.currentTab === 'dashboard') {
+                    await this.refreshCache();
+                    if (['rentabilidade', 'dashboard', 'patrimonio', 'proventos', 'calendario'].includes(this.currentTab)) {
                         Charts.destroyAll();
                         this.render(this.currentTab);
                     }
