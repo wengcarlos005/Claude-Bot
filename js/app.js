@@ -444,10 +444,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
             if (tickers.length === 0) { this._brapiDividendsCache = []; return []; }
 
-            const allDivs = PriceAPI.getCachedDividends();
-            if (Object.keys(allDivs).length === 0) {
+            if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
+                PriceAPI.loadDividendsFromStorage();
+            }
+            if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
                 const token = this._getBrapiToken();
-                if (token) await PriceAPI.fetchQuotes(tickers, token, { includeDividends: true });
+                if (token) await PriceAPI.fetchQuotes(tickers, token);
             }
 
             const firstBuy = {};
