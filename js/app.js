@@ -445,9 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tickers.length === 0) { this._brapiDividendsCache = []; return []; }
 
             if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
-                PriceAPI.loadDividendsFromStorage();
-            }
-            if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
                 const token = this._getBrapiToken();
                 if (token) await PriceAPI.fetchDividends(tickers, token);
             }
