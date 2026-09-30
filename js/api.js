@@ -44,29 +44,49 @@ const PriceAPI = {
         if (!token || tickers.length === 0) return {};
         console.log('[brapi] fetching dividends for:', tickers);
         const results = {};
-        for (let i = 0; i < tickers.length; i++) {
-            const ticker = tickers[i];
+
+        for (let i = 0; i < tickers.length; i += 5) {
+            const batch = tickers.slice(i, i + 5);
             try {
-                const url = `${this.BASE_URL}/quote/${encodeURIComponent(ticker)}?dividends=true&token=${token}`;
+                const url = `${this.BASE_URL}/quote/${batch.join(',')}?dividends=true&token=${token}`;
                 const resp = await fetch(url);
                 if (!resp.ok) {
-                    console.warn('[brapi] HTTP', resp.status, 'for', ticker);
+                    console.warn('[brapi] batch HTTP', resp.status, 'for', batch);
                     continue;
                 }
                 const data = await resp.json();
-                if (data.results && data.results[0]) {
-                    const sym = (data.results[0].symbol || ticker).toUpperCase();
-                    const divs = data.results[0].dividendsData?.cashDividends || [];
-                    results[sym] = divs;
-                    console.log('[brapi]', ticker, '->', sym, divs.length, 'dividends');
-                } else {
-                    console.warn('[brapi] no results for', ticker, data);
+                if (data.results) {
+                    for (const r of data.results) {
+                        const sym = (r.symbol || '').toUpperCase();
+                        const divs = r.dividendsData?.cashDividends || [];
+                        results[sym] = divs;
+                        console.log('[brapi]', sym, divs.length, 'dividends');
+                    }
                 }
             } catch (e) {
-                console.error('[brapi] error for', ticker, e.message);
+                console.error('[brapi] batch error:', batch, e.message);
             }
-            if (i < tickers.length - 1) await new Promise(r => setTimeout(r, 600));
+            if (i + 5 < tickers.length) await new Promise(r => setTimeout(r, 1000));
         }
+
+        const missing = tickers.filter(t => !(t.toUpperCase() in results));
+        if (missing.length > 0) {
+            console.log('[brapi] retrying individually:', missing);
+            for (const ticker of missing) {
+                try {
+                    const resp = await fetch(`${this.BASE_URL}/quote/${encodeURIComponent(ticker)}?dividends=true&token=${token}`);
+                    if (!resp.ok) { console.warn('[brapi] retry HTTP', resp.status, ticker); continue; }
+                    const data = await resp.json();
+                    if (data.results?.[0]) {
+                        const sym = (data.results[0].symbol || ticker).toUpperCase();
+                        results[sym] = data.results[0].dividendsData?.cashDividends || [];
+                        console.log('[brapi] retry', sym, results[sym].length, 'dividends');
+                    }
+                } catch (e) { console.error('[brapi] retry error', ticker, e.message); }
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
+
         return results;
     },
 
