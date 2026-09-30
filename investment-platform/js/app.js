@@ -1,42 +1,138 @@
 document.addEventListener('DOMContentLoaded', () => {
     const App = {
         currentTab: 'dashboard',
+        cache: {},
 
-        init() {
-            this.applyTheme();
-            this.applyCdiRate();
-            this.bindNav();
-            this.bindModals();
-            this.bindTheme();
-            this.bindExport();
-            this.bindCdi();
-            this.bindForms();
-            this.bindUpdatePrices();
-            this.checkFirstRun();
-            this.navigate('dashboard');
+        async init() {
+            this.showScreen('auth');
+            const user = await Auth.init();
+            if (user) {
+                await this.startApp();
+            }
+            this.bindAuth();
         },
 
-        checkFirstRun() {
-            if (Store.getTransactions().length === 0) {
-                Utils.generateSampleData();
-                Utils.showToast('Dados de exemplo carregados!', 'success');
+        showScreen(screen) {
+            document.getElementById('auth-screen').style.display = screen === 'auth' ? 'flex' : 'none';
+            document.getElementById('loading-screen').style.display = screen === 'loading' ? 'flex' : 'none';
+            document.getElementById('app').style.display = screen === 'app' ? 'block' : 'none';
+        },
+
+        async startApp() {
+            this.showScreen('loading');
+            try {
+                const settings = await DB.getSettings();
+                document.body.setAttribute('data-theme', settings.theme || 'dark');
+                document.getElementById('cdi-rate').value = settings.cdi_rate || 13.15;
+                await this.refreshCache();
+                this.bindNav();
+                this.bindModals();
+                this.bindTheme();
+                this.bindExport();
+                this.bindCdi();
+                this.bindForms();
+                this.bindUpdatePrices();
+                this.bindLogout();
+                await this.checkMigration();
+                this.showScreen('app');
+                this.navigate('dashboard');
+            } catch (err) {
+                console.error('Erro ao carregar app:', err);
+                Utils.showToast('Erro ao carregar dados. Tente novamente.', 'error');
+                this.showScreen('auth');
             }
         },
 
-        applyTheme() {
-            const theme = Store.getTheme();
-            document.body.setAttribute('data-theme', theme);
+        async refreshCache() {
+            const [transactions, proventos, watchlist, prices, snapshots, portfolio] = await Promise.all([
+                DB.getTransactions(), DB.getProventos(), DB.getWatchlist(),
+                DB.getPrices(), DB.getSnapshots(), DB.getPortfolio(),
+            ]);
+            this.cache = { transactions, proventos, watchlist, prices, snapshots, portfolio };
+            this.cache.totalValue = Object.values(portfolio).reduce((s, h) => s + h.currentValue, 0);
+            this.cache.totalInvested = Object.values(portfolio).reduce((s, h) => s + h.totalInvested, 0);
         },
 
-        applyCdiRate() {
-            document.getElementById('cdi-rate').value = Store.getCdiRate();
+        async checkMigration() {
+            if (this.cache.transactions.length === 0 && Store.getTransactions().length > 0) {
+                Utils.showToast('Migrando dados do navegador...', 'info');
+                await DB.migrateFromLocalStorage();
+                await this.refreshCache();
+                Utils.showToast('Dados migrados com sucesso!', 'success');
+            }
         },
 
+        // ==================== AUTH ====================
+        bindAuth() {
+            let isLogin = true;
+            const form = document.getElementById('auth-form');
+            const toggleBtn = document.getElementById('auth-toggle-btn');
+            const toggleText = document.getElementById('auth-toggle-text');
+            const submitBtn = document.getElementById('auth-submit');
+            const errorEl = document.getElementById('auth-error');
+
+            toggleBtn.addEventListener('click', () => {
+                isLogin = !isLogin;
+                submitBtn.textContent = isLogin ? 'Entrar' : 'Criar conta';
+                toggleText.textContent = isLogin ? 'Não tem conta?' : 'Já tem conta?';
+                toggleBtn.textContent = isLogin ? 'Criar conta' : 'Entrar';
+                errorEl.textContent = '';
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('auth-email').value.trim();
+                const password = document.getElementById('auth-password').value;
+                errorEl.textContent = '';
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Aguarde...';
+
+                try {
+                    if (isLogin) {
+                        await Auth.signIn(email, password);
+                    } else {
+                        await Auth.signUp(email, password);
+                    }
+                    await this.startApp();
+                } catch (err) {
+                    const msg = err.message || 'Erro ao autenticar';
+                    const translated = {
+                        'Invalid login credentials': 'E-mail ou senha incorretos',
+                        'User already registered': 'Este e-mail já está cadastrado',
+                        'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres',
+                        'Unable to validate email address: invalid format': 'Formato de e-mail inválido',
+                    };
+                    errorEl.textContent = translated[msg] || msg;
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = isLogin ? 'Entrar' : 'Criar conta';
+                }
+            });
+        },
+
+        bindLogout() {
+            const btn = document.getElementById('btn-logout');
+            if (btn && !btn._bound) {
+                btn._bound = true;
+                btn.addEventListener('click', async () => {
+                    const ok = await Utils.confirm('Sair', 'Deseja sair da sua conta?');
+                    if (ok) {
+                        await Auth.signOut();
+                        this.cache = {};
+                        Charts.destroyAll();
+                        this.showScreen('auth');
+                    }
+                });
+            }
+        },
+
+        // ==================== NAV ====================
         bindNav() {
             document.querySelectorAll('.nav-tab').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    this.navigate(btn.dataset.tab);
-                });
+                if (!btn._bound) {
+                    btn._bound = true;
+                    btn.addEventListener('click', () => this.navigate(btn.dataset.tab));
+                }
             });
         },
 
@@ -62,13 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ==================== DASHBOARD ====================
         renderDashboard() {
-            const portfolio = Store.getPortfolio();
-            const totalValue = Store.getTotalValue();
-            const totalInvested = Store.getTotalInvested();
+            const { portfolio, totalValue, totalInvested, proventos } = this.cache;
             const profit = totalValue - totalInvested;
             const profitPct = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
 
-            const proventos = Store.getProventos();
             const now = new Date();
             const thisMonth = now.toISOString().slice(0, 7);
             const provMes = proventos.filter(p => p.date.startsWith(thisMonth)).reduce((s, p) => s + p.total, 0);
@@ -78,11 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const prov12m = proventos.filter(p => p.date >= oneYearAgo).reduce((s, p) => s + p.total, 0);
             const yieldPct = totalInvested > 0 ? (prov12m / totalInvested) * 100 : 0;
 
-            const cdiRate = Store.getCdiRate();
-            const firstTx = Store.getTransactions().sort((a, b) => a.date.localeCompare(b.date))[0];
+            const cdiRate = parseFloat(document.getElementById('cdi-rate').value) || 13.15;
+            const txs = [...this.cache.transactions].sort((a, b) => a.date.localeCompare(b.date));
             let cdiPct = 0;
-            if (firstTx && totalInvested > 0) {
-                const days = Utils.businessDaysBetween(firstTx.date, Utils.todayStr());
+            if (txs.length > 0 && totalInvested > 0) {
+                const days = Utils.businessDaysBetween(txs[0].date, Utils.todayStr());
                 const cdiReturn = Utils.calculateCDI(cdiRate, days) * 100;
                 cdiPct = cdiReturn > 0 ? (profitPct / cdiReturn) * 100 : 0;
             }
@@ -94,10 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('dash-proventos-mes').textContent = Utils.formatCurrency(provMes);
             document.getElementById('dash-proventos-change').textContent = `${provCount} provento${provCount !== 1 ? 's' : ''}`;
-
             document.getElementById('dash-proventos-ano').textContent = Utils.formatCurrency(prov12m);
             document.getElementById('dash-yield').textContent = `Yield: ${Utils.formatNumber(yieldPct)}%`;
-
             document.getElementById('dash-rentabilidade').textContent = Utils.formatPercent(profitPct);
             document.getElementById('dash-vs-cdi').textContent = `${Utils.formatNumber(cdiPct)}% do CDI`;
 
@@ -108,30 +199,25 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         _renderDashPatrimonioChart() {
-            const snapshots = Store.getSnapshots();
-            if (snapshots.length < 2) {
-                const portfolio = Store.getPortfolio();
-                const txs = Store.getTransactions().sort((a, b) => a.date.localeCompare(b.date));
-                if (txs.length === 0) return;
+            const { snapshots, transactions, prices, totalValue } = this.cache;
+            const txs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+            if (txs.length === 0) return;
+
+            if (snapshots.length >= 2) {
+                Charts.createLine('chart-dash-patrimonio', snapshots.map(s => Utils.formatDateShort(s.date)), [{ data: snapshots.map(s => s.value), label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
+            } else {
                 const months = Utils.getMonthsRange(txs[0].date.slice(0, 7), Utils.todayStr().slice(0, 7));
                 const labels = months.map(m => Utils.formatDateShort(m + '-01'));
                 const values = [];
-                let runningValue = 0;
+                let rv = 0;
                 for (const month of months) {
-                    const monthTxs = txs.filter(t => t.date.startsWith(month));
-                    for (const tx of monthTxs) {
-                        const price = Store.getPrices()[tx.ticker.toUpperCase()] || tx.preco;
-                        if (tx.operacao === 'compra') runningValue += tx.qtd * price;
-                        else runningValue -= tx.qtd * price;
+                    for (const tx of txs.filter(t => t.date.startsWith(month))) {
+                        const p = prices[tx.ticker.toUpperCase()] || tx.preco;
+                        if (tx.operacao === 'compra') rv += tx.qtd * p; else rv -= tx.qtd * p;
                     }
-                    values.push(Math.max(0, runningValue));
+                    values.push(Math.max(0, rv));
                 }
-                const lastVal = Store.getTotalValue();
-                if (values.length > 0) values[values.length - 1] = lastVal;
-                Charts.createLine('chart-dash-patrimonio', labels, [{ data: values, label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
-            } else {
-                const labels = snapshots.map(s => Utils.formatDateShort(s.date));
-                const values = snapshots.map(s => s.value);
+                if (values.length > 0) values[values.length - 1] = totalValue;
                 Charts.createLine('chart-dash-patrimonio', labels, [{ data: values, label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
             }
         },
@@ -144,10 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const labels = Object.keys(byType);
             const data = Object.values(byType);
-            if (labels.length === 0) {
-                labels.push('Sem ativos');
-                data.push(1);
-            }
+            if (labels.length === 0) { labels.push('Sem ativos'); data.push(1); }
             Charts.createPie('chart-dash-composicao', labels, data, { doughnut: true });
         },
 
@@ -158,9 +241,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 months.push(d.toISOString().slice(0, 7));
             }
-            const labels = months.map(m => Utils.formatDateShort(m + '-01'));
-            const data = months.map(m => proventos.filter(p => p.date.startsWith(m)).reduce((s, p) => s + p.total, 0));
-            Charts.createBar('chart-dash-proventos', labels, [{ data, label: 'Proventos', color: Utils.getChartColors()[1] }]);
+            Charts.createBar('chart-dash-proventos',
+                months.map(m => Utils.formatDateShort(m + '-01')),
+                [{ data: months.map(m => proventos.filter(p => p.date.startsWith(m)).reduce((s, p) => s + p.total, 0)), label: 'Proventos', color: Utils.getChartColors()[1] }]
+            );
         },
 
         _renderDashTopPositions(portfolio, totalValue) {
@@ -173,61 +257,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="mono">${Utils.formatCurrency(h.currentValue)}</td>
                     <td class="mono">${totalValue > 0 ? Utils.formatNumber((h.currentValue / totalValue) * 100) : '0'}%</td>
                 </tr>
-            `).join('');
-            if (sorted.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="no-data">Nenhum ativo na carteira</td></tr>';
-            }
+            `).join('') || '<tr><td colspan="4" class="no-data">Nenhum ativo na carteira</td></tr>';
         },
 
         // ==================== PATRIMONIO ====================
         renderPatrimonio() {
-            const portfolio = Store.getPortfolio();
-            const totalValue = Store.getTotalValue();
-            const totalInvested = Store.getTotalInvested();
+            const { portfolio, totalValue, totalInvested, snapshots, transactions, prices } = this.cache;
             const profit = totalValue - totalInvested;
-            const numAssets = Object.keys(portfolio).length;
 
             document.getElementById('pat-total').textContent = Utils.formatCurrency(totalValue);
             document.getElementById('pat-investido').textContent = Utils.formatCurrency(totalInvested);
             const lucroEl = document.getElementById('pat-lucro');
             lucroEl.textContent = Utils.formatCurrency(profit);
             lucroEl.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
-            document.getElementById('pat-ativos').textContent = numAssets;
+            document.getElementById('pat-ativos').textContent = Object.keys(portfolio).length;
 
-            this._renderDashPatrimonioChart();
-            const canvas = document.getElementById('chart-patrimonio');
-            if (canvas) {
-                const snapshots = Store.getSnapshots();
-                const txs = Store.getTransactions().sort((a, b) => a.date.localeCompare(b.date));
-                if (txs.length > 0) {
+            const txs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+            if (txs.length > 0) {
+                if (snapshots.length >= 2) {
+                    Charts.createLine('chart-patrimonio', snapshots.map(s => Utils.formatDateShort(s.date)), [{ data: snapshots.map(s => s.value), label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
+                } else {
                     const months = Utils.getMonthsRange(txs[0].date.slice(0, 7), Utils.todayStr().slice(0, 7));
                     const labels = months.map(m => Utils.formatDateShort(m + '-01'));
-                    let values;
-                    if (snapshots.length >= 2) {
-                        values = snapshots.map(s => s.value);
-                        const snapLabels = snapshots.map(s => Utils.formatDateShort(s.date));
-                        Charts.createLine('chart-patrimonio', snapLabels, [{ data: values, label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
-                    } else {
-                        values = [];
-                        let rv = 0;
-                        for (const month of months) {
-                            const mTxs = txs.filter(t => t.date.startsWith(month));
-                            for (const tx of mTxs) {
-                                const price = Store.getPrices()[tx.ticker.toUpperCase()] || tx.preco;
-                                if (tx.operacao === 'compra') rv += tx.qtd * price;
-                                else rv -= tx.qtd * price;
-                            }
-                            values.push(Math.max(0, rv));
+                    const values = [];
+                    let rv = 0;
+                    for (const month of months) {
+                        for (const tx of txs.filter(t => t.date.startsWith(month))) {
+                            const p = prices[tx.ticker.toUpperCase()] || tx.preco;
+                            if (tx.operacao === 'compra') rv += tx.qtd * p; else rv -= tx.qtd * p;
                         }
-                        if (values.length > 0) values[values.length - 1] = totalValue;
-                        Charts.createLine('chart-patrimonio', labels, [{ data: values, label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
+                        values.push(Math.max(0, rv));
                     }
+                    if (values.length > 0) values[values.length - 1] = totalValue;
+                    Charts.createLine('chart-patrimonio', labels, [{ data: values, label: 'Patrimônio', fill: true, color: Utils.getChartColors()[0] }]);
                 }
             }
 
             const sorted = Object.values(portfolio).sort((a, b) => b.currentValue - a.currentValue);
-            const tbody = document.getElementById('pat-assets-tbody');
-            tbody.innerHTML = sorted.map(h => `
+            document.getElementById('pat-assets-tbody').innerHTML = sorted.map(h => `
                 <tr>
                     <td><strong>${Utils.escapeHtml(h.ticker)}</strong></td>
                     <td><span class="badge badge-${h.classe}">${Utils.getAssetTypeLabel(h.classe)}</span></td>
@@ -239,89 +306,58 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="mono ${h.profit >= 0 ? 'text-green' : 'text-red'}">${Utils.formatCurrency(h.profit)}</td>
                     <td class="mono ${h.profitPct >= 0 ? 'text-green' : 'text-red'}">${Utils.formatPercent(h.profitPct)}</td>
                 </tr>
-            `).join('');
-            if (sorted.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="no-data">Nenhum ativo na carteira</td></tr>';
-            }
+            `).join('') || '<tr><td colspan="9" class="no-data">Nenhum ativo na carteira</td></tr>';
         },
 
         // ==================== PROVENTOS ====================
         renderProventos() {
-            const proventos = Store.getProventos();
-            const totalInvested = Store.getTotalInvested();
+            const { proventos, totalInvested } = this.cache;
             const now = new Date();
             const thisMonth = now.toISOString().slice(0, 7);
             const thisYear = String(now.getFullYear());
             const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().slice(0, 10);
 
-            const provMes = proventos.filter(p => p.date.startsWith(thisMonth)).reduce((s, p) => s + p.total, 0);
-            const provAno = proventos.filter(p => p.date.startsWith(thisYear)).reduce((s, p) => s + p.total, 0);
+            document.getElementById('prov-mes').textContent = Utils.formatCurrency(proventos.filter(p => p.date.startsWith(thisMonth)).reduce((s, p) => s + p.total, 0));
+            document.getElementById('prov-ano').textContent = Utils.formatCurrency(proventos.filter(p => p.date.startsWith(thisYear)).reduce((s, p) => s + p.total, 0));
             const prov12m = proventos.filter(p => p.date >= oneYearAgo).reduce((s, p) => s + p.total, 0);
-            const yieldPct = totalInvested > 0 ? (prov12m / totalInvested) * 100 : 0;
-
-            document.getElementById('prov-mes').textContent = Utils.formatCurrency(provMes);
-            document.getElementById('prov-ano').textContent = Utils.formatCurrency(provAno);
             document.getElementById('prov-12m').textContent = Utils.formatCurrency(prov12m);
-            document.getElementById('prov-yield').textContent = Utils.formatNumber(yieldPct) + '%';
+            document.getElementById('prov-yield').textContent = Utils.formatNumber(totalInvested > 0 ? (prov12m / totalInvested) * 100 : 0) + '%';
 
             const months = [];
-            for (let i = 11; i >= 0; i--) {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                months.push(d.toISOString().slice(0, 7));
-            }
-            const labels = months.map(m => Utils.formatDateShort(m + '-01'));
-            const data = months.map(m => proventos.filter(p => p.date.startsWith(m)).reduce((s, p) => s + p.total, 0));
-            Charts.createBar('chart-proventos', labels, [{ data, label: 'Proventos', color: Utils.getChartColors()[1] }]);
+            for (let i = 11; i >= 0; i--) months.push(new Date(now.getFullYear(), now.getMonth() - i, 1).toISOString().slice(0, 7));
+            Charts.createBar('chart-proventos', months.map(m => Utils.formatDateShort(m + '-01')), [{ data: months.map(m => proventos.filter(p => p.date.startsWith(m)).reduce((s, p) => s + p.total, 0)), label: 'Proventos', color: Utils.getChartColors()[1] }]);
 
             const byTipo = {};
             proventos.forEach(p => { byTipo[p.tipo] = (byTipo[p.tipo] || 0) + p.total; });
-            Charts.createPie('chart-proventos-tipo',
-                Object.keys(byTipo).map(Utils.getProventoTypeLabel),
-                Object.values(byTipo),
-                { doughnut: true }
-            );
+            Charts.createPie('chart-proventos-tipo', Object.keys(byTipo).map(Utils.getProventoTypeLabel), Object.values(byTipo), { doughnut: true });
 
             const byAtivo = {};
             proventos.forEach(p => { byAtivo[p.ativo] = (byAtivo[p.ativo] || 0) + p.total; });
             const sortedAtivos = Object.entries(byAtivo).sort((a, b) => b[1] - a[1]).slice(0, 8);
-            Charts.createPie('chart-proventos-ativos',
-                sortedAtivos.map(a => a[0]),
-                sortedAtivos.map(a => a[1]),
-                { doughnut: true }
-            );
+            Charts.createPie('chart-proventos-ativos', sortedAtivos.map(a => a[0]), sortedAtivos.map(a => a[1]), { doughnut: true });
 
             this._populateProventoAssetFilter();
             this._renderProventosTable();
         },
 
         _populateProventoAssetFilter() {
-            const portfolio = Store.getPortfolio();
+            const { portfolio, proventos } = this.cache;
             const select = document.getElementById('prov-filter-asset');
             const current = select.value;
             select.innerHTML = '<option value="">Todos os ativos</option>';
-            for (const ticker of Object.keys(portfolio).sort()) {
-                select.innerHTML += `<option value="${ticker}">${ticker}</option>`;
-            }
-            const allTickers = [...new Set(Store.getProventos().map(p => p.ativo))];
-            for (const t of allTickers) {
-                if (!portfolio[t]) {
-                    select.innerHTML += `<option value="${t}">${t}</option>`;
-                }
-            }
+            const allTickers = [...new Set([...Object.keys(portfolio), ...proventos.map(p => p.ativo)])].sort();
+            for (const t of allTickers) select.innerHTML += `<option value="${t}">${t}</option>`;
             select.value = current;
         },
 
         _renderProventosTable() {
-            const proventos = Store.getProventos();
             const filterType = document.getElementById('prov-filter-type').value;
             const filterAsset = document.getElementById('prov-filter-asset').value;
-
-            let filtered = proventos;
+            let filtered = this.cache.proventos;
             if (filterType) filtered = filtered.filter(p => p.tipo === filterType);
             if (filterAsset) filtered = filtered.filter(p => p.ativo === filterAsset);
 
-            const tbody = document.getElementById('prov-tbody');
-            tbody.innerHTML = filtered.map(p => `
+            document.getElementById('prov-tbody').innerHTML = filtered.map(p => `
                 <tr>
                     <td>${Utils.formatDate(p.date)}</td>
                     <td><strong>${Utils.escapeHtml(p.ativo)}</strong></td>
@@ -340,36 +376,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </td>
                 </tr>
-            `).join('');
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="no-data">Nenhum provento registrado</td></tr>';
-            }
+            `).join('') || '<tr><td colspan="7" class="no-data">Nenhum provento registrado</td></tr>';
         },
 
         // ==================== RENTABILIDADE ====================
         renderRentabilidade() {
-            const portfolio = Store.getPortfolio();
-            const totalValue = Store.getTotalValue();
-            const totalInvested = Store.getTotalInvested();
+            const { portfolio, totalValue, totalInvested, transactions, prices } = this.cache;
             const profitPct = totalInvested > 0 ? ((totalValue - totalInvested) / totalInvested) * 100 : 0;
-            const cdiRate = Store.getCdiRate();
+            const cdiRate = parseFloat(document.getElementById('cdi-rate').value) || 13.15;
 
-            const txs = Store.getTransactions().sort((a, b) => a.date.localeCompare(b.date));
+            const txs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
             const firstDate = txs.length > 0 ? txs[0].date : Utils.todayStr();
             const totalDays = Utils.businessDaysBetween(firstDate, Utils.todayStr());
             const cdiTotal = Utils.calculateCDI(cdiRate, totalDays) * 100;
             const vsCdi = cdiTotal > 0 ? (profitPct / cdiTotal) * 100 : 0;
 
             const currentYear = String(new Date().getFullYear());
-            const janFirst = `${currentYear}-01-01`;
-            const yearDays = Utils.businessDaysBetween(janFirst, Utils.todayStr());
+            const yearDays = Utils.businessDaysBetween(`${currentYear}-01-01`, Utils.todayStr());
             const cdiYear = Utils.calculateCDI(cdiRate, yearDays) * 100;
-
-            const lastMonth = new Date();
-            lastMonth.setMonth(lastMonth.getMonth() - 1);
-            const lastMonthStr = lastMonth.toISOString().slice(0, 7);
-            const thisMonthStr = new Date().toISOString().slice(0, 7);
-            const monthDays = Utils.businessDaysBetween(thisMonthStr + '-01', Utils.todayStr());
+            const monthDays = Utils.businessDaysBetween(new Date().toISOString().slice(0, 7) + '-01', Utils.todayStr());
             const cdiMonth = Utils.calculateCDI(cdiRate, monthDays) * 100;
 
             document.getElementById('rent-total').textContent = Utils.formatPercent(profitPct);
@@ -381,158 +406,90 @@ document.addEventListener('DOMContentLoaded', () => {
             if (txs.length > 0) {
                 const months = Utils.getMonthsRange(txs[0].date.slice(0, 7), Utils.todayStr().slice(0, 7));
                 const labels = months.map(m => Utils.formatDateShort(m + '-01'));
-
                 const portfolioReturns = [];
                 const cdiReturns = [];
-                let cumInvested = 0;
-                let cumValue = 0;
+                let cumInvested = 0, cumValue = 0;
 
                 for (const month of months) {
-                    const mTxs = txs.filter(t => t.date.startsWith(month));
-                    for (const tx of mTxs) {
+                    for (const tx of txs.filter(t => t.date.startsWith(month))) {
                         if (tx.operacao === 'compra') {
                             cumInvested += tx.qtd * tx.preco + (tx.taxas || 0);
-                            cumValue += tx.qtd * (Store.getPrices()[tx.ticker.toUpperCase()] || tx.preco);
+                            cumValue += tx.qtd * (prices[tx.ticker.toUpperCase()] || tx.preco);
                         } else {
-                            const portfolio = Store.getPortfolio();
                             const h = portfolio[tx.ticker.toUpperCase()];
                             const avgP = h ? h.avgPrice : tx.preco;
                             cumInvested -= tx.qtd * avgP;
-                            cumValue -= tx.qtd * (Store.getPrices()[tx.ticker.toUpperCase()] || tx.preco);
+                            cumValue -= tx.qtd * (prices[tx.ticker.toUpperCase()] || tx.preco);
                         }
                     }
-                    const ret = cumInvested > 0 ? ((cumValue - cumInvested) / cumInvested) * 100 : 0;
-                    portfolioReturns.push(ret);
-
-                    const days = Utils.businessDaysBetween(txs[0].date, month + '-28');
-                    cdiReturns.push(Utils.calculateCDI(cdiRate, days) * 100);
+                    portfolioReturns.push(cumInvested > 0 ? ((cumValue - cumInvested) / cumInvested) * 100 : 0);
+                    cdiReturns.push(Utils.calculateCDI(cdiRate, Utils.businessDaysBetween(txs[0].date, month + '-28')) * 100);
                 }
-
-                if (portfolioReturns.length > 0) {
-                    portfolioReturns[portfolioReturns.length - 1] = profitPct;
-                }
+                if (portfolioReturns.length > 0) portfolioReturns[portfolioReturns.length - 1] = profitPct;
 
                 Charts.createLine('chart-rentabilidade', labels, [
                     { data: portfolioReturns, label: 'Carteira', color: Utils.getChartColors()[0], fill: true },
                     { data: cdiReturns, label: 'CDI', color: Utils.getChartColors()[3], dashed: true },
-                ], {
-                    yFormat: v => v.toFixed(1) + '%',
-                    tooltipCallbacks: {
-                        label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%`,
-                    },
+                ], { yFormat: v => v.toFixed(1) + '%', tooltipCallbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%` } });
+
+                const monthlyReturns = portfolioReturns.map((r, i) => {
+                    if (i === 0) return r;
+                    const prev = 1 + portfolioReturns[i - 1] / 100;
+                    const curr = 1 + r / 100;
+                    return prev > 0 ? ((curr / prev) - 1) * 100 : 0;
                 });
-
-                const monthlyReturns = [];
-                for (let i = 0; i < months.length; i++) {
-                    if (i === 0) monthlyReturns.push(portfolioReturns[0]);
-                    else {
-                        const prev = 1 + portfolioReturns[i - 1] / 100;
-                        const curr = 1 + portfolioReturns[i] / 100;
-                        monthlyReturns.push(prev > 0 ? ((curr / prev) - 1) * 100 : 0);
-                    }
-                }
-
-                const barColors = monthlyReturns.map(v => v >= 0 ? Utils.getChartColors()[1] : Utils.getChartColors()[4]);
                 Charts.createBar('chart-rent-mensal', labels, [{
-                    data: monthlyReturns,
-                    label: 'Retorno Mensal',
-                    colors: barColors,
-                }], {
-                    yFormat: v => v.toFixed(1) + '%',
-                    tooltipCallbacks: {
-                        label: ctx => ` ${ctx.raw.toFixed(2)}%`,
-                    },
-                });
+                    data: monthlyReturns, label: 'Retorno Mensal',
+                    colors: monthlyReturns.map(v => v >= 0 ? Utils.getChartColors()[1] : Utils.getChartColors()[4]),
+                }], { yFormat: v => v.toFixed(1) + '%', tooltipCallbacks: { label: ctx => ` ${ctx.raw.toFixed(2)}%` } });
             }
 
             const sorted = Object.values(portfolio).sort((a, b) => b.profitPct - a.profitPct);
-            const tbody = document.getElementById('rent-tbody');
-            tbody.innerHTML = sorted.map(h => {
-                const days = Utils.businessDaysBetween(firstDate, Utils.todayStr());
-                const cdiPeriod = Utils.calculateCDI(cdiRate, days) * 100;
-                const vs = cdiPeriod > 0 ? (h.profitPct / cdiPeriod) * 100 : 0;
-                return `
-                    <tr>
-                        <td><strong>${Utils.escapeHtml(h.ticker)}</strong></td>
-                        <td><span class="badge badge-${h.classe}">${Utils.getAssetTypeLabel(h.classe)}</span></td>
-                        <td class="mono ${h.profitPct >= 0 ? 'text-green' : 'text-red'}">${Utils.formatPercent(h.profitPct)}</td>
-                        <td class="mono">-</td>
-                        <td class="mono">-</td>
-                        <td class="mono">${Utils.formatNumber(vs)}%</td>
-                    </tr>
-                `;
-            }).join('');
-            if (sorted.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Nenhum ativo na carteira</td></tr>';
-            }
+            document.getElementById('rent-tbody').innerHTML = sorted.map(h => {
+                const vs = cdiTotal > 0 ? (h.profitPct / cdiTotal) * 100 : 0;
+                return `<tr>
+                    <td><strong>${Utils.escapeHtml(h.ticker)}</strong></td>
+                    <td><span class="badge badge-${h.classe}">${Utils.getAssetTypeLabel(h.classe)}</span></td>
+                    <td class="mono ${h.profitPct >= 0 ? 'text-green' : 'text-red'}">${Utils.formatPercent(h.profitPct)}</td>
+                    <td class="mono">-</td><td class="mono">-</td>
+                    <td class="mono">${Utils.formatNumber(vs)}%</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="6" class="no-data">Nenhum ativo na carteira</td></tr>';
         },
 
         // ==================== COMPOSICAO ====================
         renderComposicao() {
-            const portfolio = Store.getPortfolio();
-            const totalValue = Store.getTotalValue();
-
-            const byType = {};
-            const bySetor = {};
+            const { portfolio, totalValue } = this.cache;
+            const byType = {}, bySetor = {};
             for (const h of Object.values(portfolio)) {
-                const typeLabel = Utils.getAssetTypeLabel(h.classe);
-                byType[typeLabel] = (byType[typeLabel] || 0) + h.currentValue;
-                const setorLabel = Utils.getSectorLabel(h.setor);
-                bySetor[setorLabel] = (bySetor[setorLabel] || 0) + h.currentValue;
+                byType[Utils.getAssetTypeLabel(h.classe)] = (byType[Utils.getAssetTypeLabel(h.classe)] || 0) + h.currentValue;
+                bySetor[Utils.getSectorLabel(h.setor)] = (bySetor[Utils.getSectorLabel(h.setor)] || 0) + h.currentValue;
             }
 
-            const typeLabels = Object.keys(byType);
-            const typeData = Object.values(byType);
+            const typeLabels = Object.keys(byType), typeData = Object.values(byType);
             Charts.createPie('chart-comp-tipo', typeLabels.length ? typeLabels : ['Sem ativos'], typeLabels.length ? typeData : [1], { doughnut: true });
-
-            const typeLegend = document.getElementById('comp-tipo-legend');
             const colors = Utils.getChartColors();
-            typeLegend.innerHTML = typeLabels.map((label, i) => `
-                <div class="legend-item">
-                    <span class="legend-dot" style="background:${colors[i]}"></span>
-                    ${label}
-                    <span class="legend-value">${Utils.formatCurrency(typeData[i])} (${totalValue > 0 ? ((typeData[i] / totalValue) * 100).toFixed(1) : 0}%)</span>
-                </div>
-            `).join('');
+            document.getElementById('comp-tipo-legend').innerHTML = typeLabels.map((l, i) => `<div class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l}<span class="legend-value">${Utils.formatCurrency(typeData[i])} (${totalValue > 0 ? ((typeData[i] / totalValue) * 100).toFixed(1) : 0}%)</span></div>`).join('');
 
-            const setorLabels = Object.keys(bySetor);
-            const setorData = Object.values(bySetor);
+            const setorLabels = Object.keys(bySetor), setorData = Object.values(bySetor);
             Charts.createPie('chart-comp-setor', setorLabels.length ? setorLabels : ['Sem setores'], setorLabels.length ? setorData : [1], { doughnut: true });
-
-            const setorLegend = document.getElementById('comp-setor-legend');
-            setorLegend.innerHTML = setorLabels.map((label, i) => `
-                <div class="legend-item">
-                    <span class="legend-dot" style="background:${colors[i]}"></span>
-                    ${label}
-                    <span class="legend-value">${Utils.formatCurrency(setorData[i])} (${totalValue > 0 ? ((setorData[i] / totalValue) * 100).toFixed(1) : 0}%)</span>
-                </div>
-            `).join('');
+            document.getElementById('comp-setor-legend').innerHTML = setorLabels.map((l, i) => `<div class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l}<span class="legend-value">${Utils.formatCurrency(setorData[i])} (${totalValue > 0 ? ((setorData[i] / totalValue) * 100).toFixed(1) : 0}%)</span></div>`).join('');
 
             const sorted = Object.values(portfolio).sort((a, b) => b.currentValue - a.currentValue);
-            Charts.createHorizontalBar('chart-comp-ativos',
-                sorted.map(h => h.ticker),
-                sorted.map(h => h.currentValue)
-            );
+            Charts.createHorizontalBar('chart-comp-ativos', sorted.map(h => h.ticker), sorted.map(h => h.currentValue));
 
-            const tbody = document.getElementById('comp-tbody');
-            tbody.innerHTML = sorted.map(h => {
+            document.getElementById('comp-tbody').innerHTML = sorted.map(h => {
                 const typePct = totalValue > 0 ? (h.currentValue / totalValue) * 100 : 0;
                 const typeTotal = byType[Utils.getAssetTypeLabel(h.classe)] || 0;
-                const typePctInner = typeTotal > 0 ? (h.currentValue / typeTotal) * 100 : 0;
-                return `
-                    <tr>
-                        <td><strong>${Utils.escapeHtml(h.ticker)}</strong></td>
-                        <td><span class="badge badge-${h.classe}">${Utils.getAssetTypeLabel(h.classe)}</span></td>
-                        <td>${Utils.getSectorLabel(h.setor)}</td>
-                        <td class="mono">${Utils.formatCurrency(h.currentValue)}</td>
-                        <td class="mono">${Utils.formatNumber(typePct)}%</td>
-                        <td class="mono">${Utils.formatNumber(typePctInner)}%</td>
-                    </tr>
-                `;
-            }).join('');
-            if (sorted.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Nenhum ativo na carteira</td></tr>';
-            }
+                return `<tr>
+                    <td><strong>${Utils.escapeHtml(h.ticker)}</strong></td>
+                    <td><span class="badge badge-${h.classe}">${Utils.getAssetTypeLabel(h.classe)}</span></td>
+                    <td>${Utils.getSectorLabel(h.setor)}</td>
+                    <td class="mono">${Utils.formatCurrency(h.currentValue)}</td>
+                    <td class="mono">${Utils.formatNumber(typePct)}%</td>
+                    <td class="mono">${Utils.formatNumber(typeTotal > 0 ? (h.currentValue / typeTotal) * 100 : 0)}%</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="6" class="no-data">Nenhum ativo na carteira</td></tr>';
         },
 
         // ==================== TRANSACOES ====================
@@ -550,20 +507,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (el && !el._bound) {
                     el._bound = true;
                     el.addEventListener('change', () => { this.transPage = 1; this._renderTransacoesTable(); });
-                    if (el.type === 'text') {
-                        el.addEventListener('input', () => { this.transPage = 1; this._renderTransacoesTable(); });
-                    }
+                    if (el.type === 'text') el.addEventListener('input', () => { this.transPage = 1; this._renderTransacoesTable(); });
                 }
             });
             const clearBtn = document.getElementById('btn-clear-filters');
             if (clearBtn && !clearBtn._bound) {
                 clearBtn._bound = true;
                 clearBtn.addEventListener('click', () => {
-                    document.getElementById('trans-filter-operation').value = '';
-                    document.getElementById('trans-filter-class').value = '';
-                    document.getElementById('trans-filter-from').value = '';
-                    document.getElementById('trans-filter-to').value = '';
-                    document.getElementById('trans-filter-ticker').value = '';
+                    ['trans-filter-operation', 'trans-filter-class', 'trans-filter-from', 'trans-filter-to', 'trans-filter-ticker'].forEach(id => document.getElementById(id).value = '');
                     this.transPage = 1;
                     this._renderTransacoesTable();
                 });
@@ -571,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         _renderTransacoesTable() {
-            let txs = Store.getTransactions();
+            let txs = [...this.cache.transactions];
             const op = document.getElementById('trans-filter-operation').value;
             const cls = document.getElementById('trans-filter-class').value;
             const from = document.getElementById('trans-filter-from').value;
@@ -586,120 +537,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const totalPages = Math.max(1, Math.ceil(txs.length / this.transPerPage));
             if (this.transPage > totalPages) this.transPage = totalPages;
-            const start = (this.transPage - 1) * this.transPerPage;
-            const paged = txs.slice(start, start + this.transPerPage);
+            const paged = txs.slice((this.transPage - 1) * this.transPerPage, this.transPage * this.transPerPage);
 
-            const tbody = document.getElementById('trans-tbody');
-            tbody.innerHTML = paged.map(t => {
+            document.getElementById('trans-tbody').innerHTML = paged.map(t => {
                 const total = t.qtd * t.preco + (t.operacao === 'compra' ? (t.taxas || 0) : -(t.taxas || 0));
-                return `
-                    <tr>
-                        <td>${Utils.formatDate(t.date)}</td>
-                        <td><span class="badge badge-${t.operacao}">${t.operacao === 'compra' ? 'Compra' : 'Venda'}</span></td>
-                        <td><strong>${Utils.escapeHtml(t.ticker)}</strong></td>
-                        <td><span class="badge badge-${t.classe}">${Utils.getAssetTypeLabel(t.classe)}</span></td>
-                        <td class="mono">${Utils.formatNumber(t.qtd, t.qtd < 1 ? 6 : 0)}</td>
-                        <td class="mono">${Utils.formatCurrency(t.preco)}</td>
-                        <td class="mono">${Utils.formatCurrency(t.taxas || 0)}</td>
-                        <td class="mono">${Utils.formatCurrency(Math.abs(total))}</td>
-                        <td>
-                            <div class="action-btns">
-                                <button class="action-btn" onclick="App.editTransaction('${t.id}')" title="Editar">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                                </button>
-                                <button class="action-btn delete" onclick="App.deleteTransaction('${t.id}')" title="Excluir">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            if (paged.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="no-data">Nenhuma transação encontrada</td></tr>';
-            }
+                return `<tr>
+                    <td>${Utils.formatDate(t.date)}</td>
+                    <td><span class="badge badge-${t.operacao}">${t.operacao === 'compra' ? 'Compra' : 'Venda'}</span></td>
+                    <td><strong>${Utils.escapeHtml(t.ticker)}</strong></td>
+                    <td><span class="badge badge-${t.classe}">${Utils.getAssetTypeLabel(t.classe)}</span></td>
+                    <td class="mono">${Utils.formatNumber(t.qtd, t.qtd < 1 ? 6 : 0)}</td>
+                    <td class="mono">${Utils.formatCurrency(t.preco)}</td>
+                    <td class="mono">${Utils.formatCurrency(t.taxas || 0)}</td>
+                    <td class="mono">${Utils.formatCurrency(Math.abs(total))}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="action-btn" onclick="App.editTransaction('${t.id}')" title="Editar">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                            </button>
+                            <button class="action-btn delete" onclick="App.deleteTransaction('${t.id}')" title="Excluir">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="9" class="no-data">Nenhuma transação encontrada</td></tr>';
 
             const pagDiv = document.getElementById('trans-pagination');
             if (totalPages <= 1) { pagDiv.innerHTML = ''; return; }
-            let pagHtml = '';
-            for (let i = 1; i <= totalPages; i++) {
-                pagHtml += `<button class="${i === this.transPage ? 'active' : ''}" onclick="App.transGoPage(${i})">${i}</button>`;
-            }
-            pagDiv.innerHTML = pagHtml;
+            pagDiv.innerHTML = Array.from({ length: totalPages }, (_, i) => `<button class="${i + 1 === this.transPage ? 'active' : ''}" onclick="App.transGoPage(${i + 1})">${i + 1}</button>`).join('');
         },
 
-        transGoPage(page) {
-            this.transPage = page;
-            this._renderTransacoesTable();
-        },
+        transGoPage(page) { this.transPage = page; this._renderTransacoesTable(); },
 
         // ==================== SEGUINDO ====================
         renderSeguindo() {
-            const watchlist = Store.getWatchlist();
+            const watchlist = this.cache.watchlist;
             const grid = document.getElementById('watchlist-grid');
             const empty = document.getElementById('seguindo-empty');
 
-            if (watchlist.length === 0) {
-                grid.style.display = 'none';
-                empty.style.display = 'block';
-                return;
-            }
-            grid.style.display = 'grid';
-            empty.style.display = 'none';
+            if (watchlist.length === 0) { grid.style.display = 'none'; empty.style.display = 'block'; return; }
+            grid.style.display = 'grid'; empty.style.display = 'none';
 
             grid.innerHTML = watchlist.map(w => {
                 const upside = w.alvo && w.preco ? ((w.alvo - w.preco) / w.preco * 100) : null;
-                return `
-                    <div class="watchlist-card">
-                        <div class="watchlist-card-header">
-                            <span class="watchlist-ticker">${Utils.escapeHtml(w.ticker)}</span>
-                            <span class="badge badge-${w.classe}">${Utils.getAssetTypeLabel(w.classe)}</span>
-                        </div>
-                        <div class="watchlist-price">${Utils.formatCurrency(w.preco)}</div>
-                        ${w.alvo ? `
-                            <div class="watchlist-target">
-                                Alvo: ${Utils.formatCurrency(w.alvo)}
-                                ${upside !== null ? `<span class="${upside >= 0 ? 'text-green' : 'text-red'}">(${Utils.formatPercent(upside)})</span>` : ''}
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width:${Math.min(100, Math.max(0, (w.preco / w.alvo) * 100))}%;background:${upside >= 0 ? 'var(--green)' : 'var(--red)'}"></div>
-                            </div>
-                        ` : ''}
-                        ${w.notas ? `<div class="watchlist-notes">${Utils.escapeHtml(w.notas)}</div>` : ''}
-                        <div class="watchlist-actions">
-                            <button class="btn btn-sm btn-primary" onclick="App.buyFromWatchlist('${w.id}')">Comprar</button>
-                            <button class="btn btn-sm btn-danger" onclick="App.deleteWatchItem('${w.id}')">Remover</button>
-                        </div>
+                return `<div class="watchlist-card">
+                    <div class="watchlist-card-header">
+                        <span class="watchlist-ticker">${Utils.escapeHtml(w.ticker)}</span>
+                        <span class="badge badge-${w.classe}">${Utils.getAssetTypeLabel(w.classe)}</span>
                     </div>
-                `;
+                    <div class="watchlist-price">${Utils.formatCurrency(w.preco)}</div>
+                    ${w.alvo ? `<div class="watchlist-target">Alvo: ${Utils.formatCurrency(w.alvo)} ${upside !== null ? `<span class="${upside >= 0 ? 'text-green' : 'text-red'}">(${Utils.formatPercent(upside)})</span>` : ''}</div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, Math.max(0, (w.preco / w.alvo) * 100))}%;background:${upside >= 0 ? 'var(--green)' : 'var(--red)'}"></div></div>` : ''}
+                    ${w.notas ? `<div class="watchlist-notes">${Utils.escapeHtml(w.notas)}</div>` : ''}
+                    <div class="watchlist-actions">
+                        <button class="btn btn-sm btn-primary" onclick="App.buyFromWatchlist('${w.id}')">Comprar</button>
+                        <button class="btn btn-sm btn-danger" onclick="App.deleteWatchItem('${w.id}')">Remover</button>
+                    </div>
+                </div>`;
             }).join('');
         },
 
         // ==================== MODALS ====================
         bindModals() {
             document.querySelectorAll('[data-close]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.getElementById(btn.dataset.close).classList.remove('open');
-                });
+                if (!btn._bound) {
+                    btn._bound = true;
+                    btn.addEventListener('click', () => document.getElementById(btn.dataset.close).classList.remove('open'));
+                }
             });
             document.querySelectorAll('.modal-overlay').forEach(overlay => {
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) overlay.classList.remove('open');
-                });
+                if (!overlay._bound) {
+                    overlay._bound = true;
+                    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+                }
             });
 
-            document.getElementById('btn-add-transacao').addEventListener('click', () => this.openTransactionModal());
-            document.getElementById('btn-add-provento').addEventListener('click', () => this.openProventoModal());
-            document.getElementById('btn-add-seguindo').addEventListener('click', () => this.openSeguindoModal());
+            const addTx = document.getElementById('btn-add-transacao');
+            if (addTx && !addTx._bound) { addTx._bound = true; addTx.addEventListener('click', () => this.openTransactionModal()); }
+            const addProv = document.getElementById('btn-add-provento');
+            if (addProv && !addProv._bound) { addProv._bound = true; addProv.addEventListener('click', () => this.openProventoModal()); }
+            const addSeg = document.getElementById('btn-add-seguindo');
+            if (addSeg && !addSeg._bound) { addSeg._bound = true; addSeg.addEventListener('click', () => this.openSeguindoModal()); }
         },
 
         openTransactionModal(txData = null) {
-            const modal = document.getElementById('modal-transacao');
-            const title = document.getElementById('modal-trans-title');
             const form = document.getElementById('form-transacao');
-
             if (txData) {
-                title.textContent = 'Editar Transação';
+                document.getElementById('modal-trans-title').textContent = 'Editar Transação';
                 document.getElementById('trans-edit-id').value = txData.id;
                 document.getElementById('trans-operacao').value = txData.operacao;
                 document.getElementById('trans-data').value = txData.date;
@@ -711,26 +636,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('trans-taxas').value = txData.taxas || 0;
                 document.getElementById('trans-preco-atual').value = txData.precoAtual || '';
             } else {
-                title.textContent = 'Nova Transação';
+                document.getElementById('modal-trans-title').textContent = 'Nova Transação';
                 form.reset();
                 document.getElementById('trans-edit-id').value = '';
                 document.getElementById('trans-data').value = Utils.todayStr();
             }
-            modal.classList.add('open');
+            document.getElementById('modal-transacao').classList.add('open');
         },
 
         openProventoModal(pData = null) {
-            const modal = document.getElementById('modal-provento');
-            const title = document.getElementById('modal-prov-title');
-            const form = document.getElementById('form-provento');
+            const { portfolio, proventos } = this.cache;
             const select = document.getElementById('prov-ativo');
-
-            const portfolio = Store.getPortfolio();
-            const allTickers = [...new Set([...Object.keys(portfolio), ...Store.getProventos().map(p => p.ativo)])].sort();
+            const allTickers = [...new Set([...Object.keys(portfolio), ...proventos.map(p => p.ativo)])].sort();
             select.innerHTML = '<option value="">Selecione...</option>' + allTickers.map(t => `<option value="${t}">${t}</option>`).join('');
 
             if (pData) {
-                title.textContent = 'Editar Provento';
+                document.getElementById('modal-prov-title').textContent = 'Editar Provento';
                 document.getElementById('prov-edit-id').value = pData.id;
                 select.value = pData.ativo;
                 document.getElementById('prov-data').value = pData.date;
@@ -739,12 +660,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('prov-qtd').value = pData.qtd;
                 document.getElementById('prov-total').value = pData.total;
             } else {
-                title.textContent = 'Adicionar Provento';
-                form.reset();
+                document.getElementById('modal-prov-title').textContent = 'Adicionar Provento';
+                document.getElementById('form-provento').reset();
                 document.getElementById('prov-edit-id').value = '';
                 document.getElementById('prov-data').value = Utils.todayStr();
             }
-            modal.classList.add('open');
+            document.getElementById('modal-provento').classList.add('open');
         },
 
         openSeguindoModal() {
@@ -754,155 +675,146 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ==================== FORMS ====================
         bindForms() {
-            document.getElementById('form-transacao').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const editId = document.getElementById('trans-edit-id').value;
-                const tx = {
-                    date: document.getElementById('trans-data').value,
-                    operacao: document.getElementById('trans-operacao').value,
-                    ticker: document.getElementById('trans-ticker').value.toUpperCase().trim(),
-                    classe: document.getElementById('trans-classe').value,
-                    setor: document.getElementById('trans-setor').value,
-                    qtd: parseFloat(document.getElementById('trans-qtd').value),
-                    preco: parseFloat(document.getElementById('trans-preco').value),
-                    taxas: parseFloat(document.getElementById('trans-taxas').value) || 0,
-                    precoAtual: parseFloat(document.getElementById('trans-preco-atual').value) || 0,
-                };
+            const txForm = document.getElementById('form-transacao');
+            if (txForm && !txForm._bound) {
+                txForm._bound = true;
+                txForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const editId = document.getElementById('trans-edit-id').value;
+                    const tx = {
+                        date: document.getElementById('trans-data').value,
+                        operacao: document.getElementById('trans-operacao').value,
+                        ticker: document.getElementById('trans-ticker').value.toUpperCase().trim(),
+                        classe: document.getElementById('trans-classe').value,
+                        setor: document.getElementById('trans-setor').value,
+                        qtd: parseFloat(document.getElementById('trans-qtd').value),
+                        preco: parseFloat(document.getElementById('trans-preco').value),
+                        taxas: parseFloat(document.getElementById('trans-taxas').value) || 0,
+                        precoAtual: parseFloat(document.getElementById('trans-preco-atual').value) || 0,
+                    };
+                    if (!tx.ticker || !tx.date || tx.qtd <= 0 || tx.preco <= 0) { Utils.showToast('Preencha todos os campos obrigatórios', 'error'); return; }
 
-                if (!tx.ticker || !tx.date || tx.qtd <= 0 || tx.preco <= 0) {
-                    Utils.showToast('Preencha todos os campos obrigatórios', 'error');
-                    return;
-                }
+                    try {
+                        if (editId) { await DB.updateTransaction(editId, tx); Utils.showToast('Transação atualizada!', 'success'); }
+                        else { await DB.addTransaction(tx); Utils.showToast('Transação adicionada!', 'success'); }
+                        document.getElementById('modal-transacao').classList.remove('open');
+                        await this.refreshCache();
+                        this.navigate(this.currentTab);
+                    } catch (err) { Utils.showToast('Erro ao salvar: ' + err.message, 'error'); }
+                });
+            }
 
-                if (editId) {
-                    Store.updateTransaction(editId, tx);
-                    Utils.showToast('Transação atualizada!', 'success');
-                } else {
-                    Store.addTransaction(tx);
-                    Utils.showToast('Transação adicionada!', 'success');
-                }
+            const provForm = document.getElementById('form-provento');
+            if (provForm && !provForm._bound) {
+                provForm._bound = true;
+                provForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const editId = document.getElementById('prov-edit-id').value;
+                    const valorCota = parseFloat(document.getElementById('prov-valor-cota').value);
+                    const qtd = parseFloat(document.getElementById('prov-qtd').value);
+                    const p = {
+                        date: document.getElementById('prov-data').value,
+                        ativo: document.getElementById('prov-ativo').value.toUpperCase().trim(),
+                        tipo: document.getElementById('prov-tipo').value,
+                        valorCota, qtd, total: valorCota * qtd,
+                    };
+                    if (!p.ativo || !p.date || p.valorCota <= 0 || p.qtd <= 0) { Utils.showToast('Preencha todos os campos obrigatórios', 'error'); return; }
 
-                document.getElementById('modal-transacao').classList.remove('open');
-                this.navigate(this.currentTab);
-            });
-
-            document.getElementById('form-provento').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const editId = document.getElementById('prov-edit-id').value;
-                const valorCota = parseFloat(document.getElementById('prov-valor-cota').value);
-                const qtd = parseFloat(document.getElementById('prov-qtd').value);
-                const p = {
-                    date: document.getElementById('prov-data').value,
-                    ativo: document.getElementById('prov-ativo').value.toUpperCase().trim(),
-                    tipo: document.getElementById('prov-tipo').value,
-                    valorCota,
-                    qtd,
-                    total: valorCota * qtd,
-                };
-
-                if (!p.ativo || !p.date || p.valorCota <= 0 || p.qtd <= 0) {
-                    Utils.showToast('Preencha todos os campos obrigatórios', 'error');
-                    return;
-                }
-
-                if (editId) {
-                    Store.updateProvento(editId, p);
-                    Utils.showToast('Provento atualizado!', 'success');
-                } else {
-                    Store.addProvento(p);
-                    Utils.showToast('Provento adicionado!', 'success');
-                }
-
-                document.getElementById('modal-provento').classList.remove('open');
-                this.navigate(this.currentTab);
-            });
+                    try {
+                        if (editId) { await DB.updateProvento(editId, p); Utils.showToast('Provento atualizado!', 'success'); }
+                        else { await DB.addProvento(p); Utils.showToast('Provento adicionado!', 'success'); }
+                        document.getElementById('modal-provento').classList.remove('open');
+                        await this.refreshCache();
+                        this.navigate(this.currentTab);
+                    } catch (err) { Utils.showToast('Erro ao salvar: ' + err.message, 'error'); }
+                });
+            }
 
             const provValorCota = document.getElementById('prov-valor-cota');
             const provQtd = document.getElementById('prov-qtd');
             const provTotal = document.getElementById('prov-total');
-            const calcTotal = () => {
-                const v = parseFloat(provValorCota.value) || 0;
-                const q = parseFloat(provQtd.value) || 0;
-                provTotal.value = (v * q).toFixed(2);
-            };
-            provValorCota.addEventListener('input', calcTotal);
-            provQtd.addEventListener('input', calcTotal);
+            const calcTotal = () => { provTotal.value = ((parseFloat(provValorCota.value) || 0) * (parseFloat(provQtd.value) || 0)).toFixed(2); };
+            if (provValorCota && !provValorCota._bound) { provValorCota._bound = true; provValorCota.addEventListener('input', calcTotal); }
+            if (provQtd && !provQtd._bound) { provQtd._bound = true; provQtd.addEventListener('input', calcTotal); }
 
-            document.getElementById('prov-ativo').addEventListener('change', (e) => {
-                const ticker = e.target.value;
-                if (ticker) {
-                    const portfolio = Store.getPortfolio();
-                    const h = portfolio[ticker];
-                    if (h) {
-                        document.getElementById('prov-qtd').value = h.qtd;
-                        calcTotal();
-                    }
-                }
-            });
+            const provAtivo = document.getElementById('prov-ativo');
+            if (provAtivo && !provAtivo._bound) {
+                provAtivo._bound = true;
+                provAtivo.addEventListener('change', (e) => {
+                    const h = this.cache.portfolio[e.target.value];
+                    if (h) { document.getElementById('prov-qtd').value = h.qtd; calcTotal(); }
+                });
+            }
 
-            document.getElementById('form-seguindo').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const item = {
-                    ticker: document.getElementById('seg-ticker').value.toUpperCase().trim(),
-                    classe: document.getElementById('seg-classe').value,
-                    preco: parseFloat(document.getElementById('seg-preco').value) || 0,
-                    alvo: parseFloat(document.getElementById('seg-alvo').value) || null,
-                    notas: document.getElementById('seg-notas').value.trim(),
-                };
-                if (!item.ticker) {
-                    Utils.showToast('Informe o ticker do ativo', 'error');
-                    return;
-                }
-                Store.addWatchItem(item);
-                Utils.showToast('Ativo adicionado à lista de seguidos!', 'success');
-                document.getElementById('modal-seguindo').classList.remove('open');
-                this.renderSeguindo();
-            });
+            const segForm = document.getElementById('form-seguindo');
+            if (segForm && !segForm._bound) {
+                segForm._bound = true;
+                segForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const item = {
+                        ticker: document.getElementById('seg-ticker').value.toUpperCase().trim(),
+                        classe: document.getElementById('seg-classe').value,
+                        preco: parseFloat(document.getElementById('seg-preco').value) || 0,
+                        alvo: parseFloat(document.getElementById('seg-alvo').value) || null,
+                        notas: document.getElementById('seg-notas').value.trim(),
+                    };
+                    if (!item.ticker) { Utils.showToast('Informe o ticker do ativo', 'error'); return; }
+                    try {
+                        await DB.addWatchItem(item);
+                        Utils.showToast('Ativo adicionado!', 'success');
+                        document.getElementById('modal-seguindo').classList.remove('open');
+                        await this.refreshCache();
+                        this.renderSeguindo();
+                    } catch (err) { Utils.showToast('Erro ao salvar: ' + err.message, 'error'); }
+                });
+            }
 
-            document.getElementById('prov-filter-type').addEventListener('change', () => this._renderProventosTable());
-            document.getElementById('prov-filter-asset').addEventListener('change', () => this._renderProventosTable());
+            const provFilterType = document.getElementById('prov-filter-type');
+            if (provFilterType && !provFilterType._bound) { provFilterType._bound = true; provFilterType.addEventListener('change', () => this._renderProventosTable()); }
+            const provFilterAsset = document.getElementById('prov-filter-asset');
+            if (provFilterAsset && !provFilterAsset._bound) { provFilterAsset._bound = true; provFilterAsset.addEventListener('change', () => this._renderProventosTable()); }
         },
 
         // ==================== ACTIONS ====================
         editTransaction(id) {
-            const tx = Store.getTransactions().find(t => t.id === id);
+            const tx = this.cache.transactions.find(t => t.id === id);
             if (tx) this.openTransactionModal(tx);
         },
 
         async deleteTransaction(id) {
-            const ok = await Utils.confirm('Excluir Transação', 'Tem certeza que deseja excluir esta transação?');
-            if (ok) {
-                Store.deleteTransaction(id);
+            if (await Utils.confirm('Excluir Transação', 'Tem certeza que deseja excluir esta transação?')) {
+                await DB.deleteTransaction(id);
                 Utils.showToast('Transação excluída', 'success');
+                await this.refreshCache();
                 this.navigate(this.currentTab);
             }
         },
 
         editProvento(id) {
-            const p = Store.getProventos().find(x => x.id === id);
+            const p = this.cache.proventos.find(x => x.id === id);
             if (p) this.openProventoModal(p);
         },
 
         async deleteProvento(id) {
-            const ok = await Utils.confirm('Excluir Provento', 'Tem certeza que deseja excluir este provento?');
-            if (ok) {
-                Store.deleteProvento(id);
+            if (await Utils.confirm('Excluir Provento', 'Tem certeza que deseja excluir este provento?')) {
+                await DB.deleteProvento(id);
                 Utils.showToast('Provento excluído', 'success');
+                await this.refreshCache();
                 this.navigate(this.currentTab);
             }
         },
 
         async deleteWatchItem(id) {
-            const ok = await Utils.confirm('Remover Ativo', 'Tem certeza que deseja parar de seguir este ativo?');
-            if (ok) {
-                Store.deleteWatchItem(id);
+            if (await Utils.confirm('Remover Ativo', 'Tem certeza que deseja parar de seguir este ativo?')) {
+                await DB.deleteWatchItem(id);
                 Utils.showToast('Ativo removido', 'success');
+                await this.refreshCache();
                 this.renderSeguindo();
             }
         },
 
         buyFromWatchlist(id) {
-            const w = Store.getWatchlist().find(x => x.id === id);
+            const w = this.cache.watchlist.find(x => x.id === id);
             if (w) {
                 this.navigate('transacoes');
                 setTimeout(() => {
@@ -917,94 +829,112 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ==================== THEME ====================
         bindTheme() {
-            document.getElementById('btn-theme').addEventListener('click', () => {
-                const current = Store.getTheme();
-                const next = current === 'dark' ? 'light' : 'dark';
-                Store.setTheme(next);
-                document.body.setAttribute('data-theme', next);
-                Charts.destroyAll();
-                this.render(this.currentTab);
-            });
+            const btn = document.getElementById('btn-theme');
+            if (btn && !btn._bound) {
+                btn._bound = true;
+                btn.addEventListener('click', async () => {
+                    const current = document.body.getAttribute('data-theme');
+                    const next = current === 'dark' ? 'light' : 'dark';
+                    document.body.setAttribute('data-theme', next);
+                    await DB.updateSettings({ theme: next });
+                    Charts.destroyAll();
+                    this.render(this.currentTab);
+                });
+            }
         },
 
         // ==================== CDI ====================
         bindCdi() {
-            document.getElementById('cdi-rate').addEventListener('change', (e) => {
-                const rate = parseFloat(e.target.value) || 13.15;
-                Store.setCdiRate(rate);
-                if (this.currentTab === 'rentabilidade' || this.currentTab === 'dashboard') {
-                    Charts.destroyAll();
-                    this.render(this.currentTab);
-                }
-            });
+            const el = document.getElementById('cdi-rate');
+            if (el && !el._bound) {
+                el._bound = true;
+                el.addEventListener('change', async (e) => {
+                    const rate = parseFloat(e.target.value) || 13.15;
+                    await DB.updateSettings({ cdi_rate: rate });
+                    if (this.currentTab === 'rentabilidade' || this.currentTab === 'dashboard') {
+                        Charts.destroyAll();
+                        this.render(this.currentTab);
+                    }
+                });
+            }
         },
 
         // ==================== EXPORT/IMPORT ====================
         bindExport() {
-            document.getElementById('btn-export').addEventListener('click', () => {
-                const data = Store.exportData();
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `investtracker-backup-${Utils.todayStr()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-                Utils.showToast('Dados exportados com sucesso!', 'success');
-            });
+            const expBtn = document.getElementById('btn-export');
+            if (expBtn && !expBtn._bound) {
+                expBtn._bound = true;
+                expBtn.addEventListener('click', async () => {
+                    const data = await DB.exportData();
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `investtracker-backup-${Utils.todayStr()}.json`; a.click();
+                    URL.revokeObjectURL(url);
+                    Utils.showToast('Dados exportados!', 'success');
+                });
+            }
 
-            document.getElementById('btn-import').addEventListener('click', () => {
-                document.getElementById('import-file').click();
-            });
+            const impBtn = document.getElementById('btn-import');
+            if (impBtn && !impBtn._bound) {
+                impBtn._bound = true;
+                impBtn.addEventListener('click', () => document.getElementById('import-file').click());
+            }
 
-            document.getElementById('import-file').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const data = JSON.parse(ev.target.result);
-                        Store.importData(data);
-                        Utils.showToast('Dados importados com sucesso!', 'success');
-                        Charts.destroyAll();
-                        this.navigate(this.currentTab);
-                    } catch {
-                        Utils.showToast('Erro ao importar dados. Verifique o arquivo.', 'error');
-                    }
-                };
-                reader.readAsText(file);
-                e.target.value = '';
-            });
+            const impFile = document.getElementById('import-file');
+            if (impFile && !impFile._bound) {
+                impFile._bound = true;
+                impFile.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (ev) => {
+                        try {
+                            const data = JSON.parse(ev.target.result);
+                            await DB.importData(data);
+                            await this.refreshCache();
+                            Utils.showToast('Dados importados!', 'success');
+                            Charts.destroyAll();
+                            this.navigate(this.currentTab);
+                        } catch { Utils.showToast('Erro ao importar dados.', 'error'); }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = '';
+                });
+            }
         },
 
         // ==================== UPDATE PRICES ====================
         bindUpdatePrices() {
-            document.getElementById('btn-update-prices').addEventListener('click', () => {
-                this.openPriceUpdateModal();
-            });
-
-            document.getElementById('btn-save-precos').addEventListener('click', () => {
-                const rows = document.querySelectorAll('#preco-tbody tr');
-                rows.forEach(row => {
-                    const ticker = row.dataset.ticker;
-                    const input = row.querySelector('input');
-                    if (ticker && input && input.value) {
-                        Store.updatePrice(ticker, parseFloat(input.value));
+            const btn = document.getElementById('btn-update-prices');
+            if (btn && !btn._bound) {
+                btn._bound = true;
+                btn.addEventListener('click', () => this.openPriceUpdateModal());
+            }
+            const saveBtn = document.getElementById('btn-save-precos');
+            if (saveBtn && !saveBtn._bound) {
+                saveBtn._bound = true;
+                saveBtn.addEventListener('click', async () => {
+                    const rows = document.querySelectorAll('#preco-tbody tr');
+                    for (const row of rows) {
+                        const ticker = row.dataset.ticker;
+                        const input = row.querySelector('input');
+                        if (ticker && input && input.value) {
+                            await DB.updatePrice(ticker, parseFloat(input.value));
+                        }
                     }
+                    await DB._takeSnapshot();
+                    document.getElementById('modal-preco').classList.remove('open');
+                    Utils.showToast('Preços atualizados!', 'success');
+                    await this.refreshCache();
+                    Charts.destroyAll();
+                    this.navigate(this.currentTab);
                 });
-                Store._takeSnapshot();
-                document.getElementById('modal-preco').classList.remove('open');
-                Utils.showToast('Preços atualizados!', 'success');
-                Charts.destroyAll();
-                this.navigate(this.currentTab);
-            });
+            }
         },
 
         openPriceUpdateModal() {
-            const portfolio = Store.getPortfolio();
-            const tbody = document.getElementById('preco-tbody');
-            const sorted = Object.values(portfolio).sort((a, b) => a.ticker.localeCompare(b.ticker));
-            tbody.innerHTML = sorted.map(h => `
+            const sorted = Object.values(this.cache.portfolio).sort((a, b) => a.ticker.localeCompare(b.ticker));
+            document.getElementById('preco-tbody').innerHTML = sorted.map(h => `
                 <tr data-ticker="${h.ticker}">
                     <td><strong>${Utils.escapeHtml(h.ticker)}</strong></td>
                     <td class="mono">${Utils.formatCurrency(h.currentPrice)}</td>
