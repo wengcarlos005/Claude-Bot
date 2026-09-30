@@ -13,9 +13,28 @@ const PriceAPI = {
                     data.results.forEach(r => {
                         results[r.symbol.toUpperCase()] = r.regularMarketPrice;
                     });
+                } else if (batch.length > 1) {
+                    for (const ticker of batch) {
+                        try {
+                            const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?token=${token}`);
+                            const d2 = await r2.json();
+                            if (d2.results && d2.results[0]) {
+                                results[d2.results[0].symbol.toUpperCase()] = d2.results[0].regularMarketPrice;
+                            }
+                        } catch (e2) {}
+                    }
                 }
             } catch (e) {
                 console.error('Price fetch error:', e);
+                for (const ticker of batch) {
+                    try {
+                        const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?token=${token}`);
+                        const d2 = await r2.json();
+                        if (d2.results && d2.results[0]) {
+                            results[d2.results[0].symbol.toUpperCase()] = d2.results[0].regularMarketPrice;
+                        }
+                    } catch (e2) {}
+                }
             }
         }
         return results;
@@ -35,7 +54,10 @@ const PriceAPI = {
 
     async updateAllPrices(token) {
         const portfolio = await DB.getPortfolio();
-        const tickers = Object.keys(portfolio);
+        const tickers = Object.keys(portfolio).filter(t => {
+            const p = portfolio[t];
+            return p.classe !== 'renda-fixa';
+        });
         if (tickers.length === 0) return {};
         const prices = await this.fetchQuotes(tickers, token);
         for (const [ticker, price] of Object.entries(prices)) {
