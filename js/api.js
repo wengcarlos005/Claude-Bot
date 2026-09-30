@@ -5,8 +5,8 @@ const PriceAPI = {
     async fetchQuotes(tickers, token) {
         if (!token || tickers.length === 0) return {};
         const results = {};
-        for (let i = 0; i < tickers.length; i += 10) {
-            const batch = tickers.slice(i, i + 10);
+        for (let i = 0; i < tickers.length; i += 5) {
+            const batch = tickers.slice(i, i + 5);
             try {
                 const resp = await fetch(`${this.BASE_URL}/quote/${batch.join(',')}?token=${token}`);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -34,7 +34,7 @@ const PriceAPI = {
     async fetchDividends(tickers, token) {
         if (!token || tickers.length === 0) return {};
         try {
-            const url = `/api/dividends?tickers=${tickers.join(',')}&token=${encodeURIComponent(token)}`;
+            const url = `/api/dividends?tickers=${tickers.join(',')}&token=${encodeURIComponent(token)}&_v=2`;
             const resp = await fetch(url);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
