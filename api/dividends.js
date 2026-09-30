@@ -7,48 +7,32 @@ export default async function handler(req, res) {
     const tickerList = tickers.split(',').slice(0, 30);
     const results = {};
 
-    for (let i = 0; i < tickerList.length; i += 5) {
-        const batch = tickerList.slice(i, i + 5);
+    for (let i = 0; i < tickerList.length; i++) {
+        const t = tickerList[i];
         try {
-            const url = `https://brapi.dev/api/quote/${batch.join(',')}?dividends=true&token=${token}`;
+            const url = `https://brapi.dev/api/quote/${t}?dividends=true&token=${token}`;
             const resp = await fetch(url);
             if (!resp.ok) {
-                for (const t of batch) {
-                    try {
-                        const r2 = await fetch(`https://brapi.dev/api/quote/${t}?dividends=true&token=${token}`);
-                        if (!r2.ok) continue;
-                        const d2 = await r2.json();
-                        if (d2.results?.[0]) {
-                            const sym = (d2.results[0].symbol || t).toUpperCase();
-                            results[sym] = d2.results[0].dividendsData?.cashDividends || [];
+                if (resp.status === 429) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    const retry = await fetch(url);
+                    if (retry.ok) {
+                        const d = await retry.json();
+                        if (d.results?.[0]) {
+                            const sym = (d.results[0].symbol || t).toUpperCase();
+                            results[sym] = d.results[0].dividendsData?.cashDividends || [];
                         }
-                    } catch (e) {}
-                    await new Promise(r => setTimeout(r, 300));
+                    }
                 }
                 continue;
             }
             const data = await resp.json();
-            if (data.results) {
-                for (const r of data.results) {
-                    const sym = (r.symbol || '').toUpperCase();
-                    results[sym] = r.dividendsData?.cashDividends || [];
-                }
+            if (data.results?.[0]) {
+                const sym = (data.results[0].symbol || t).toUpperCase();
+                results[sym] = data.results[0].dividendsData?.cashDividends || [];
             }
-        } catch (e) {
-            for (const t of batch) {
-                try {
-                    const r2 = await fetch(`https://brapi.dev/api/quote/${t}?dividends=true&token=${token}`);
-                    if (!r2.ok) continue;
-                    const d2 = await r2.json();
-                    if (d2.results?.[0]) {
-                        const sym = (d2.results[0].symbol || t).toUpperCase();
-                        results[sym] = d2.results[0].dividendsData?.cashDividends || [];
-                    }
-                } catch (e2) {}
-                await new Promise(r => setTimeout(r, 300));
-            }
-        }
-        if (i + 5 < tickerList.length) await new Promise(r => setTimeout(r, 500));
+        } catch (e) {}
+        if (i < tickerList.length - 1) await new Promise(r => setTimeout(r, 800));
     }
 
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=3600');
