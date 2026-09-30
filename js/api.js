@@ -5,25 +5,27 @@ const PriceAPI = {
     async fetchQuotes(tickers, token) {
         if (!token || tickers.length === 0) return {};
         const results = {};
-        try {
-            const resp = await fetch(`${this.BASE_URL}/quote/${tickers.join(',')}?token=${token}`);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            if (data.results) {
-                data.results.forEach(r => {
-                    results[r.symbol.toUpperCase()] = r.regularMarketPrice;
-                });
-            }
-        } catch (e) {
-            console.error('Price fetch error:', e);
-            for (const ticker of tickers) {
-                try {
-                    const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?token=${token}`);
-                    const d2 = await r2.json();
-                    if (d2.results?.[0]) {
-                        results[d2.results[0].symbol.toUpperCase()] = d2.results[0].regularMarketPrice;
-                    }
-                } catch (e2) {}
+        for (let i = 0; i < tickers.length; i += 10) {
+            const batch = tickers.slice(i, i + 10);
+            try {
+                const resp = await fetch(`${this.BASE_URL}/quote/${batch.join(',')}?token=${token}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                if (data.results) {
+                    data.results.forEach(r => {
+                        results[r.symbol.toUpperCase()] = r.regularMarketPrice;
+                    });
+                }
+            } catch (e) {
+                for (const ticker of batch) {
+                    try {
+                        const r2 = await fetch(`${this.BASE_URL}/quote/${ticker}?token=${token}`);
+                        const d2 = await r2.json();
+                        if (d2.results?.[0]) {
+                            results[d2.results[0].symbol.toUpperCase()] = d2.results[0].regularMarketPrice;
+                        }
+                    } catch (e2) {}
+                }
             }
         }
         return results;
