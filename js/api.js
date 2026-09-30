@@ -43,11 +43,14 @@ const PriceAPI = {
     async fetchDividends(ticker, token) {
         if (!token) return [];
         try {
-            const resp = await fetch(`${this.BASE_URL}/quote/${ticker}?modules=dividendsData&token=${token}`);
+            const url = `${this.BASE_URL}/quote/${ticker}?modules=dividendsData&token=${token}`;
+            const resp = await fetch(url);
             const data = await resp.json();
-            return data.results?.[0]?.dividendsData?.cashDividends || [];
+            console.log('[brapi] dividends raw', ticker, JSON.stringify(data).slice(0, 500));
+            const divs = data.results?.[0]?.dividendsData?.cashDividends || [];
+            return divs;
         } catch (e) {
-            console.error('Dividend fetch error:', e);
+            console.error('Dividend fetch error:', ticker, e);
             return [];
         }
     },
