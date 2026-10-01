@@ -437,18 +437,25 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         },
 
-        async _fetchBrapiDividends() {
-            if (this._brapiDividendsFetched) return this._brapiDividendsCache || [];
-            this._brapiDividendsFetched = true;
+        async _fetchBrapiDividends(onUpdate) {
             const portfolio = this.cache.portfolio || {};
             const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
             if (tickers.length === 0) { this._brapiDividendsCache = []; return []; }
 
-            if (Object.keys(PriceAPI.getCachedDividends()).length === 0) {
-                const token = this._getBrapiToken();
-                if (token) await PriceAPI.fetchDividends(tickers, token);
+            const token = this._getBrapiToken();
+            if (token) {
+                await PriceAPI.fetchDividends(tickers, token, () => {
+                    this._buildBrapiRows();
+                    if (onUpdate) onUpdate();
+                });
             }
 
+            this._brapiDividendsFetched = true;
+            return this._buildBrapiRows();
+        },
+
+        _buildBrapiRows() {
+            const portfolio = this.cache.portfolio || {};
             const firstBuy = {};
             for (const tx of this.cache.transactions) {
                 const k = tx.ticker.toUpperCase();
@@ -574,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async renderProventos() {
             if (!this._brapiDividendsFetched && this._getBrapiToken()) {
                 this._renderProventosUI();
-                await this._fetchBrapiDividends();
+                await this._fetchBrapiDividends(() => this._renderProventosTable());
                 Charts.destroyAll();
             }
             this._renderProventosUI();
