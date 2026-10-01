@@ -16,17 +16,28 @@ const PriceAPI = {
 
     async fetchDividends(tickers, token) {
         if (!token || tickers.length === 0) return {};
-        try {
-            const url = `/api/dividends?tickers=${tickers.join(',')}&token=${encodeURIComponent(token)}&_v=4`;
-            const resp = await fetch(url);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            this._dividendsCache = data;
-            return data;
-        } catch (e) {
-            console.error('Dividend fetch error:', e);
-            return {};
+        const batchSize = 3;
+        const allData = {};
+
+        for (let i = 0; i < tickers.length; i += batchSize) {
+            const batch = tickers.slice(i, i + batchSize);
+            try {
+                const url = `/api/dividends?tickers=${batch.join(',')}&token=${encodeURIComponent(token)}&_v=5`;
+                const resp = await fetch(url);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    Object.assign(allData, data);
+                }
+            } catch (e) {
+                console.error('Dividend batch error:', e);
+            }
+            if (i + batchSize < tickers.length) {
+                await new Promise(r => setTimeout(r, 3000));
+            }
         }
+
+        this._dividendsCache = allData;
+        return allData;
     },
 
     getCachedDividends() {
