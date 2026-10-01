@@ -79,5 +79,7 @@ export default async function handler(req, res) {
 
     res.setHeader('Cache-Control', debug === '1' ? 'no-store' : cacheControl);
     res.setHeader('Access-Control-Allow-Origin', '*');
-    return res.status(200).json(debug === '1' ? { ...results, _debug: log } : results);
+    // _status travels with every response so the UI can explain, per ticker,
+    // why an asset shows no dividends instead of silently omitting it.
+    return res.status(200).json({ ...results, _status: log });
 }
