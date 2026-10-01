@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTab: 'dashboard',
         cache: {},
         _brapiDividendsCache: null,
-        _brapiDividendsFetched: false,
 
         async init() {
             this.showScreen('auth');
@@ -66,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.cache.totalValue = Object.values(portfolio).reduce((s, h) => s + h.currentValue, 0);
             this.cache.totalInvested = Object.values(portfolio).reduce((s, h) => s + h.totalInvested, 0);
             this._brapiDividendsCache = null;
-            this._brapiDividendsFetched = false;
         },
 
         async checkMigration() {
@@ -437,21 +435,60 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         },
 
-        async _fetchBrapiDividends(onUpdate) {
+        _dividendTickers() {
             const portfolio = this.cache.portfolio || {};
-            const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
-            if (tickers.length === 0) { this._brapiDividendsCache = []; return []; }
+            return Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
+        },
 
+        // Fills rows from localStorage so a view can paint immediately.
+        _primeDividends() {
+            const tickers = this._dividendTickers();
+            if (tickers.length > 0) PriceAPI.primeFromStorage(tickers);
+            this._buildBrapiRows();
+        },
+
+        // Background refresh. Never awaited by a render, so the UI never blocks
+        // on a slow, rate-limited API.
+        _refreshDividends(onUpdate) {
+            const tickers = this._dividendTickers();
             const token = this._getBrapiToken();
-            if (token) {
-                await PriceAPI.fetchDividends(tickers, token, () => {
-                    this._buildBrapiRows();
-                    if (onUpdate) onUpdate();
-                });
+            if (!token || tickers.length === 0) return;
+            PriceAPI.fetchDividends(tickers, token, () => {
+                this._buildBrapiRows();
+                if (onUpdate) onUpdate();
+            });
+        },
+
+        // Assets the API returned nothing for, with the reason, so a missing
+        // asset is explained rather than silently absent.
+        _missingDividendNote() {
+            const withRows = new Set((this._brapiDividendsCache || []).map(r => r.ativo));
+            const status = PriceAPI.getDividendStatus();
+            const reasons = { 'empty-results': [], '429': [], other: [], pending: [] };
+
+            for (const ticker of this._dividendTickers()) {
+                if (withRows.has(ticker)) continue;
+                const s = status[ticker];
+                if (s === undefined) reasons.pending.push(ticker);
+                else if (s === '429' || s === 'skipped-budget') reasons['429'].push(ticker);
+                else if (s === 'empty-results' || s === 'cache' || /^ok:0/.test(s)) reasons['empty-results'].push(ticker);
+                else reasons.other.push(ticker);
             }
 
-            this._brapiDividendsFetched = true;
-            return this._buildBrapiRows();
+            const parts = [];
+            if (reasons['empty-results'].length) {
+                parts.push(`A brapi.dev nao tem proventos publicados para: <strong>${reasons['empty-results'].join(', ')}</strong>.`);
+            }
+            if (reasons['429'].length) {
+                parts.push(`Ainda carregando (limite de requisicoes da brapi): <strong>${reasons['429'].join(', ')}</strong>. Recarregue em alguns minutos.`);
+            }
+            if (reasons.other.length) {
+                parts.push(`Erro ao consultar: <strong>${reasons.other.join(', ')}</strong>.`);
+            }
+            if (reasons.pending.length) {
+                parts.push(`Buscando: <strong>${reasons.pending.join(', ')}</strong>...`);
+            }
+            return parts.join(' ');
         },
 
         _buildBrapiRows() {
@@ -578,13 +615,12 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // ==================== PROVENTOS ====================
-        async renderProventos() {
-            if (!this._brapiDividendsFetched && this._getBrapiToken()) {
-                this._renderProventosUI();
-                await this._fetchBrapiDividends(() => this._renderProventosTable());
-                Charts.destroyAll();
-            }
+        renderProventos() {
+            this._primeDividends();
             this._renderProventosUI();
+            this._refreshDividends(() => {
+                if (this.currentTab === 'proventos') this._renderProventosTable();
+            });
         },
 
         _renderProventosUI() {
@@ -896,18 +932,20 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // ==================== CALENDARIO ====================
-        async renderCalendario() {
+        renderCalendario() {
+            this._primeDividends();
+            this._renderCalendarioUI();
+            this._refreshDividends(() => {
+                if (this.currentTab === 'calendario') this._renderCalendarioUI();
+            });
+        },
+
+        _renderCalendarioUI() {
             const container = document.getElementById('calendario-content');
             if (!container) return;
             const token = this._getBrapiToken();
-            const portfolio = this.cache.portfolio || {};
             const today = Utils.todayStr();
-            const tickers = Object.keys(portfolio).filter(t => portfolio[t].classe !== 'renda-fixa');
-
-            if (!this._brapiDividendsFetched && token && tickers.length > 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">Carregando proventos...</div>';
-                await this._fetchBrapiDividends();
-            }
+            const tickers = this._dividendTickers();
 
             const allProvs = this._getAllProventos();
             const rows = allProvs.map(p => ({
@@ -921,9 +959,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const shown = rows.slice(0, 100);
 
             if (shown.length === 0) {
+                const emptyNote = token ? this._missingDividendNote() : '';
                 container.innerHTML = '<div class="empty-state"><p>Nenhum provento encontrado. Adicione proventos na aba Proventos'
                     + (token ? '' : ' ou configure seu token brapi.dev no topo da pagina para buscar dividendos dos seus ativos')
-                    + '.</p></div>';
+                    + '.</p>'
+                    + (emptyNote ? `<p style="font-size:13px">${emptyNote}</p>` : '')
+                    + '</div>';
                 return;
             }
 
@@ -931,6 +972,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let html = '<div class="card"><div class="card-header"><h3>Proventos dos seus Ativos</h3></div>';
             if (!token && tickers.length > 0) {
                 html += '<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">Configure seu token brapi.dev no topo da pagina para incluir tambem os dividendos publicados das suas acoes e FIIs.</p>';
+            }
+            const note = token ? this._missingDividendNote() : '';
+            if (note) {
+                html += `<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">${note}</p>`;
             }
             html += '<div class="table-wrapper"><table class="data-table"><thead><tr><th>Data Pgto</th><th>Data Base</th><th>Ativo</th><th>Tipo</th><th>Valor/Cota</th><th>Qtd</th><th>Total</th><th>Origem</th></tr></thead><tbody>';
             for (const r of shown) {

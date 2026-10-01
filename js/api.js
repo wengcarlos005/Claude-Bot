@@ -1,5 +1,6 @@
 const PriceAPI = {
     _dividendsCache: {},
+    _dividendStatus: {},
     _dividendsInFlight: null,
     _dividendsProgressListeners: [],
 
@@ -61,7 +62,9 @@ const PriceAPI = {
         }
     },
 
-    async _runDividendFetch(tickers, token) {
+    // Synchronous: fills the cache from localStorage so a view can render
+    // immediately. Returns the tickers that still need a network fetch.
+    primeFromStorage(tickers) {
         const store = this._loadDividendStore();
         const now = Date.now();
         const missing = [];
@@ -70,10 +73,21 @@ const PriceAPI = {
             const entry = store[ticker];
             if (entry && Array.isArray(entry.divs) && (now - entry.ts) < this.DIV_TTL_MS) {
                 this._dividendsCache[ticker] = entry.divs;
+                if (!this._dividendStatus[ticker]) this._dividendStatus[ticker] = 'cache';
             } else {
                 missing.push(ticker);
             }
         }
+        return missing;
+    },
+
+    getDividendStatus() {
+        return this._dividendStatus;
+    },
+
+    async _runDividendFetch(tickers, token) {
+        const missing = this.primeFromStorage(tickers);
+        const store = this._loadDividendStore();
 
         this._emitDividendProgress();
         if (missing.length === 0) return this._dividendsCache;
@@ -88,6 +102,9 @@ const PriceAPI = {
                 const resp = await fetch(url);
                 if (resp.ok) {
                     const data = await resp.json();
+                    for (const entry of (data._status || [])) {
+                        this._dividendStatus[entry.ticker] = entry.status;
+                    }
                     for (const [symbol, divs] of Object.entries(data)) {
                         if (symbol.startsWith('_') || !Array.isArray(divs)) continue;
                         this._dividendsCache[symbol] = divs;
@@ -99,6 +116,7 @@ const PriceAPI = {
                 }
             } catch (e) {
                 console.error('Dividend batch error:', e);
+                for (const ticker of batch) this._dividendStatus[ticker] = 'network-error';
             }
 
             // An incomplete batch means brapi is throttling us, so ease off.
