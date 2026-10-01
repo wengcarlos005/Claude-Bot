@@ -464,29 +464,26 @@ document.addEventListener('DOMContentLoaded', () => {
         _missingDividendNote() {
             const withRows = new Set((this._brapiDividendsCache || []).map(r => r.ativo));
             const status = PriceAPI.getDividendStatus();
-            const reasons = { 'empty-results': [], '429': [], other: [], pending: [] };
+            const semDados = [], erro = [], buscando = [];
 
             for (const ticker of this._dividendTickers()) {
                 if (withRows.has(ticker)) continue;
                 const s = status[ticker];
-                if (s === undefined) reasons.pending.push(ticker);
-                else if (s === '429' || s === 'skipped-budget') reasons['429'].push(ticker);
-                else if (s === 'empty-results' || s === 'cache' || /^ok:0/.test(s)) reasons['empty-results'].push(ticker);
-                else reasons.other.push(ticker);
+                if (s === undefined) buscando.push(ticker);
+                else if (s.startsWith('erro')) erro.push(ticker);
+                else semDados.push(ticker);
             }
 
             const parts = [];
-            if (reasons['empty-results'].length) {
-                parts.push(`A brapi.dev nao tem proventos publicados para: <strong>${reasons['empty-results'].join(', ')}</strong>.`);
+            if (semDados.length) {
+                parts.push(`Sem proventos publicados nas fontes consultadas para: <strong>${semDados.join(', ')}</strong>.`
+                    + ' Voce pode lancar manualmente na aba Proventos.');
             }
-            if (reasons['429'].length) {
-                parts.push(`Ainda carregando (limite de requisicoes da brapi): <strong>${reasons['429'].join(', ')}</strong>. Recarregue em alguns minutos.`);
+            if (erro.length) {
+                parts.push(`Erro ao consultar: <strong>${erro.join(', ')}</strong>. Recarregue para tentar de novo.`);
             }
-            if (reasons.other.length) {
-                parts.push(`Erro ao consultar: <strong>${reasons.other.join(', ')}</strong>.`);
-            }
-            if (reasons.pending.length) {
-                parts.push(`Buscando: <strong>${reasons.pending.join(', ')}</strong>...`);
+            if (buscando.length) {
+                parts.push(`Buscando: <strong>${buscando.join(', ')}</strong>...`);
             }
             return parts.join(' ');
         },
@@ -521,6 +518,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         tipo: (d.label || 'dividendo').toLowerCase(),
                         valorCota: rate, qtd, total: rate * qtd,
                         synthetic: false, brapi: true,
+                        source: d.source || 'brapi',
+                        // Yahoo publishes only the ex-dividend date.
+                        semDataPgto: !(payDate && /^\d{4}/.test(payDate)),
                     });
                 }
             }
@@ -952,7 +952,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 date: p.date, dataBase: p.dataBase || '',
                 ativo: p.ativo, tipo: Utils.getProventoTypeLabel(p.tipo),
                 valorCota: p.valorCota, qtd: p.qtd, total: p.total,
-                origem: p.brapi ? 'brapi' : (p.synthetic ? 'estimado' : 'meu'),
+                semDataPgto: !!p.semDataPgto,
+                origem: p.brapi ? (p.source === 'yahoo' ? 'yahoo' : 'brapi') : (p.synthetic ? 'estimado' : 'meu'),
             }));
 
             rows.sort((a, b) => b.date.localeCompare(a.date));
@@ -968,11 +969,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const origemLabel = { meu: 'Meu registro', estimado: 'Estimado (CDI)', brapi: 'brapi.dev' };
+            const origemLabel = { meu: 'Meu registro', estimado: 'Estimado (CDI)', brapi: 'brapi.dev', yahoo: 'Yahoo Finance' };
             let html = '<div class="card"><div class="card-header"><h3>Proventos dos seus Ativos</h3></div>';
-            if (!token && tickers.length > 0) {
-                html += '<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">Configure seu token brapi.dev no topo da pagina para incluir tambem os dividendos publicados das suas acoes e FIIs.</p>';
-            }
             const note = token ? this._missingDividendNote() : '';
             if (note) {
                 html += `<p style="padding:0 20px 12px;color:var(--text-secondary);font-size:13px">${note}</p>`;
@@ -981,7 +979,8 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const r of shown) {
                 const future = r.date > today ? ' <span class="badge badge-compra">Futuro</span>' : '';
                 const dataBase = r.dataBase ? Utils.formatDate(r.dataBase) : '-';
-                html += `<tr><td>${Utils.formatDate(r.date)}${future}</td><td>${dataBase}</td><td><strong>${Utils.escapeHtml(r.ativo)}</strong></td><td>${Utils.escapeHtml(r.tipo)}</td>`
+                const dataPgto = r.semDataPgto ? '-' : `${Utils.formatDate(r.date)}${future}`;
+                html += `<tr><td>${dataPgto}</td><td>${dataBase}${r.semDataPgto ? future : ''}</td><td><strong>${Utils.escapeHtml(r.ativo)}</strong></td><td>${Utils.escapeHtml(r.tipo)}</td>`
                     + `<td class="mono">R$ ${Number(r.valorCota || 0).toFixed(4)}</td>`
                     + `<td class="mono">${Utils.formatNumber(r.qtd, r.qtd < 1 ? 6 : 0)}</td>`
                     + `<td class="mono text-green">${Utils.formatCurrency(r.total)}</td>`
