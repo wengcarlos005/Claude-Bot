@@ -1,3 +1,5 @@
+export const config = { maxDuration: 60 };
+
 export default async function handler(req, res) {
     const { tickers, token } = req.query;
     if (!tickers || !token) {
@@ -6,37 +8,37 @@ export default async function handler(req, res) {
 
     const tickerList = tickers.split(',').slice(0, 30);
     const results = {};
-    const concurrency = 3;
 
-    for (let i = 0; i < tickerList.length; i += concurrency) {
-        const batch = tickerList.slice(i, i + concurrency);
-        const promises = batch.map(async (t) => {
+    for (let i = 0; i < tickerList.length; i++) {
+        const t = tickerList[i].trim();
+        if (!t) continue;
+
+        for (let attempt = 0; attempt < 2; attempt++) {
             try {
                 const url = `https://brapi.dev/api/quote/${t}?dividends=true&token=${token}`;
                 const resp = await fetch(url);
-                if (!resp.ok) {
-                    if (resp.status === 429) {
-                        await new Promise(r => setTimeout(r, 2000));
-                        const retry = await fetch(url);
-                        if (retry.ok) {
-                            const d = await retry.json();
-                            if (d.results?.[0]) {
-                                const sym = (d.results[0].symbol || t).toUpperCase();
-                                results[sym] = d.results[0].dividendsData?.cashDividends || [];
-                            }
-                        }
-                    }
-                    return;
+
+                if (resp.status === 429) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    continue;
                 }
+
+                if (!resp.ok) break;
+
                 const data = await resp.json();
                 if (data.results?.[0]) {
                     const sym = (data.results[0].symbol || t).toUpperCase();
                     results[sym] = data.results[0].dividendsData?.cashDividends || [];
                 }
-            } catch (e) {}
-        });
-        await Promise.all(promises);
-        if (i + concurrency < tickerList.length) await new Promise(r => setTimeout(r, 400));
+                break;
+            } catch (e) {
+                if (attempt === 0) await new Promise(r => setTimeout(r, 2000));
+            }
+        }
+
+        if (i < tickerList.length - 1) {
+            await new Promise(r => setTimeout(r, 1500));
+        }
     }
 
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=3600');
