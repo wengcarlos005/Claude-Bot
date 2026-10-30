@@ -3,7 +3,8 @@ import type { EncounterSlot, GeneratedItem, LocationEncounters, Move, Species, T
 import type { AreaDef, ItemDef, MilestoneDef, RegionDef, Requirement, TrainerDef, UpgradeDef } from './content/types';
 import { EVOLUTION_STONES, ITEMS } from './content/items';
 import { MILESTONES, UPGRADES } from './content/upgrades';
-import { REGIONS } from './content/regions';
+import { REGIONS as BASE_REGIONS } from './content/regions';
+import { expandAreas } from './content/regions/expand';
 
 export interface RawData {
   species: Species[];
@@ -184,11 +185,17 @@ export function createGameData(raw: RawData): GameData {
     });
   }
 
+  const REGIONS: RegionDef[] = BASE_REGIONS.map((r) => ({ ...r, areas: expandAreas(r.id, r.areas, raw.encounters[r.id] ?? {}) }));
   const areas = new Map<string, ResolvedArea>();
   for (const region of REGIONS) {
     const enc = raw.encounters[region.id] ?? {};
     const n = region.areas.length;
+    // Nível de Treinador cresce ao longo da história principal; o pós-jogo (exige ser Campeão da região) fica no topo
+    // da faixa, para que dezenas de áreas extras não "esticam" a progressão até a Liga.
+    const postgame = (a: AreaDef) => a.unlock.some((r) => r.type === 'championOf' && r.regionId === region.id);
+    const main = region.areas.filter((a) => !postgame(a));
     for (const [idx, area] of region.areas.entries()) {
+      const mainIdx = main.indexOf(area);
       const t0 = region.statMult ?? 1;
       const t1 = region.statMultEnd ?? t0;
       if (areas.has(area.id)) throw new Error(`Área duplicada: ${area.id}`);
@@ -201,7 +208,7 @@ export function createGameData(raw: RawData): GameData {
         .flatMap((tr) => tr!.team.map((m) => transformLevel(region, m.level)));
       const all = [...levels, ...trainerLevels];
       const [tl0, tl1] = region.trainerLevels ?? DEFAULT_TRAINER_LEVELS[region.id] ?? [1, 1];
-      const trainerLevel = Math.round(n > 1 ? tl0 + ((tl1 - tl0) * idx) / (n - 1) : tl0);
+      const trainerLevel = mainIdx < 0 ? tl1 : Math.round(main.length > 1 ? tl0 + ((tl1 - tl0) * mainIdx) / (main.length - 1) : tl0);
       areas.set(area.id, {
         ...area,
         unlock: toTrainerLevelUnlock(area.unlock, trainerLevel),

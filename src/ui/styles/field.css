@@ -1,0 +1,98 @@
+/* Cena da rota. As cores do cenário (grama, areia, rocha…) são ilustração e vivem em src/ui/field/art.ts;
+   aqui só layout, animações e os elementos de interface (HUD, números, status), que usam tokens. */
+
+.field {
+  position: relative; height: 340px; overflow: hidden; border-radius: var(--radius-lg);
+  border: 2px solid var(--bezel-strong); box-shadow: var(--bezel-inset); image-rendering: pixelated; isolation: isolate;
+}
+.field::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3000; transition: background 2s; }
+.field--night::after { background: rgba(18, 28, 72, 0.38); }
+.field--morning::after { background: rgba(255, 196, 120, 0.12); }
+
+.field__decor { position: absolute; transform: translate(-50%, -100%); background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }
+
+/* Entidades (Pokémon): ancoradas pelos pés, com escala por profundidade. */
+.fe { position: absolute; transform: translate(-50%, -100%) scale(var(--s, 1)); transform-origin: 50% 100%; transition: left 0.12s linear, top 0.12s linear; display: grid; justify-items: center; }
+.fe.is-wander { transition: left 1.7s ease-in-out, top 1.7s ease-in-out; }
+.fe__body { position: relative; z-index: 1; }
+.fe__anim .pk-sprite { display: block; image-rendering: pixelated; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.25)); }
+.fe__shadow { width: 46px; height: 10px; margin-top: -14px; border-radius: 50%; background: rgba(0, 0, 0, 0.22); }
+.fe.is-born .fe__body { animation: fe-born 0.5s ease-out; }
+.fe--me.is-walking .fe__anim { animation: fe-hop 0.42s ease-in-out infinite; }
+.fe--me.is-fainted .fe__anim { filter: grayscale(1); opacity: 0.6; }
+.fe__anim.is-hit { animation: fe-hit 0.36s; }
+.fe__anim.is-lunge { animation: fe-lunge 0.32s ease-out; }
+.fe__anim.is-absorbed { transform: scale(0.05); opacity: 0; transition: transform 0.18s ease-in, opacity 0.18s; }
+.fe.is-down .fe__anim { transform: rotate(-90deg) translateX(-18px); filter: grayscale(1) brightness(0.9); transition: transform 0.35s ease-in; }
+.fe.is-down { animation: fe-fade 3.2s ease-in forwards; }
+.fe.is-caught .fe__anim { opacity: 0; }
+.fe.is-caught { animation: fe-fade 3.2s ease-in forwards; }
+
+@keyframes fe-hop { 50% { transform: translateY(-5px); } }
+@keyframes fe-born { from { transform: translateY(14px) scale(0.6); opacity: 0; } }
+@keyframes fe-hit { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(5px); filter: brightness(2.4); } 45% { transform: translateX(-5px); } 70% { transform: translateX(3px); filter: brightness(1.6); } }
+@keyframes fe-lunge { 40% { transform: translateX(-16px); } 100% { transform: translateX(0); } }
+@keyframes fe-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+
+/* HUD sobre a cabeça */
+.fe__hud {
+  position: absolute; bottom: calc(100% - 6px); left: 50%; transform: translateX(-50%) scale(calc(1 / var(--s, 1))); transform-origin: 50% 100%;
+  display: grid; gap: 3px; min-width: 112px; padding: 4px 7px 5px; border-radius: var(--radius-sm);
+  background: var(--screen); border: 1px solid var(--bezel-strong); box-shadow: var(--lift); z-index: 2; white-space: nowrap;
+}
+.fe__name { display: flex; justify-content: space-between; gap: var(--space-2); font-family: var(--font-display); font-size: 12px; line-height: 14px; color: var(--ink); }
+.fe__name b { font-family: var(--font-lcd); font-weight: 400; font-size: 15px; color: var(--ink-muted); }
+.fe__hp { display: block; height: 5px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.fe__hp i { display: block; height: 100%; transition: width var(--dur-bar) ease-out; }
+.fe__tag { position: absolute; bottom: calc(100% - 8px); left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: var(--radius-pill); background: var(--chassis); color: var(--on-chassis); white-space: nowrap; z-index: 2; }
+
+/* Números e textos flutuantes */
+.fe__pop {
+  position: absolute; left: 50%; top: -34px; z-index: 3; pointer-events: none; white-space: nowrap;
+  font-family: var(--font-lcd); font-size: 24px; line-height: 1; color: #fff; -webkit-text-stroke: 3px rgba(20, 16, 12, 0.85); paint-order: stroke fill;
+  transform: translateX(-50%); animation: fe-pop 1.1s ease-out forwards; margin-top: calc(var(--i, 0) * -18px);
+}
+.fe__pop.is-crit { color: var(--gold); font-size: 30px; }
+.fe__pop.is-super { color: #ffb07a; }
+.fe__pop.is-weak { color: #c7ced6; font-size: 20px; }
+.fe__pop--miss { color: #c7ced6; font-size: 20px; }
+.fe__pop--reward { color: var(--gold); }
+.fe__pop--xp { color: #9fd5ff; font-size: 20px; }
+.fe__pop--levelUp { color: #9cf28c; font-size: 26px; }
+.fe__pop--heal { color: #9cf28c; font-size: 20px; }
+.fe__pop--caught { color: var(--gold); font-family: var(--font-display); font-size: 18px; }
+@keyframes fe-pop { 0% { transform: translate(-50%, 6px) scale(0.7); opacity: 0; } 15% { transform: translate(-50%, -4px) scale(1.1); opacity: 1; } 100% { transform: translate(-50%, -38px); opacity: 0; } }
+
+/* Poké Ball: voo em arco até o alvo e balanço */
+.field__ball { position: absolute; left: var(--x1); top: var(--y1); transform: translate(-50%, -50%); animation: ball-fly 0.38s linear; pointer-events: none; }
+.field__ball-arc { display: block; animation: ball-arc 0.38s ease-out, ball-shake 0.3s ease-in-out 0.45s 3; }
+.field__ball.is-fail { animation: ball-fly 0.38s linear, fe-fade 1.4s ease-in forwards; }
+.field__ball .item-icon { display: block; image-rendering: pixelated; }
+@keyframes ball-fly { from { left: var(--x0); top: var(--y0); } to { left: var(--x1); top: var(--y1); } }
+@keyframes ball-arc { 0% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-46px) rotate(220deg); } 100% { transform: translateY(0) rotate(360deg); } }
+@keyframes ball-shake { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-22deg); } 70% { transform: rotate(22deg); } }
+
+/* Status e avisos */
+.field__status {
+  position: absolute; left: var(--space-3); top: var(--space-3); z-index: 3100; display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 4px 10px; border-radius: var(--radius-pill); background: var(--screen); border: 1px solid var(--bezel-strong);
+  font-size: 12px; font-weight: 700; color: var(--ink); box-shadow: var(--lift);
+}
+.field__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.field__dot.is-battle { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 25%, transparent); animation: dot-pulse 1s ease-in-out infinite; }
+.field__dot.is-heal { background: var(--lens); }
+@keyframes dot-pulse { 50% { opacity: 0.45; } }
+.field__center {
+  position: absolute; left: var(--space-3); bottom: var(--space-3); z-index: 3100; padding: 6px 12px; border-radius: var(--radius-md);
+  background: var(--chassis); color: var(--on-chassis); font-family: var(--font-display); font-size: 14px; box-shadow: var(--lift);
+}
+.field__hint {
+  position: absolute; left: 50%; bottom: var(--space-3); transform: translateX(-50%); z-index: 3100; max-width: 90%; text-align: center;
+  padding: 6px 12px; border-radius: var(--radius-md); background: var(--screen); border: 1px solid var(--bezel-strong); font-size: 13px; color: var(--ink-muted);
+}
+
+@media (max-width: 760px) {
+  .field { height: 260px; }
+  .fe { --s: 0.85; }
+  .fe__hud { min-width: 96px; }
+}

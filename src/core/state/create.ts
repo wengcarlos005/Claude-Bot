@@ -47,6 +47,6 @@ export function createInitialState(data: GameData, now: number, seed: number): G
       captureAttempts: 0, shiniesFound: 0, shiniesCaught: 0, evolutions: 0, moneyEarned: 0, moneySpent: 0, xpEarned: 0,
       transfers: 0, offlineMs: 0,
     },
-    hunt: { areaId: firstArea, durationMs: 0, xp: 0, money: 0, encounters: 0, wins: 0, losses: 0, captures: 0, ballsUsed: 0, shinies: 0 },
+    hunt: { areaId: firstArea, durationMs: 0, xp: 0, money: 0, encounters: 0, wins: 0, losses: 0, captures: 0, ballsUsed: 0, shinies: 0, trainerXp: 0, spent: 0 },
   };
 }

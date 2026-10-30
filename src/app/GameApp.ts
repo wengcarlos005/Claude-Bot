@@ -42,6 +42,29 @@ export interface OfflineReport {
   summary: SimSummary;
 }
 
+/** Efeito visual de batalha para a cena da rota (número de dano, arremesso, captura, recompensa…). */
+export interface Fx {
+  id: number;
+  at: number;
+  kind: 'hit' | 'miss' | 'throw' | 'caught' | 'faint' | 'reward' | 'xp' | 'levelUp' | 'heal';
+  /** Quem recebe o efeito (onde ele aparece). */
+  side: 'player' | 'foe';
+  text?: string;
+  tone?: 'crit' | 'super' | 'weak';
+  success?: boolean;
+  ball?: string;
+}
+
+export interface RecentCapture {
+  id: number;
+  at: number;
+  uid: string;
+  species: string;
+  shiny: boolean;
+  newSpecies: boolean;
+  transferred: boolean;
+}
+
 export class GameApp {
   readonly frame = signal(0);
   readonly log = signal<LogEntry[]>([]);
@@ -49,6 +72,8 @@ export class GameApp {
   readonly offlineReport = signal<OfflineReport | null>(null);
   readonly offlineProgress = signal<number | null>(null);
   readonly lastHit = signal<{ side: 'player' | 'foe'; at: number; crit: boolean; eff: number } | null>(null);
+  readonly fx = signal<Fx[]>([]);
+  readonly captures = signal<RecentCapture[]>([]);
   core: GameCore;
   private seq = 0;
   private acc = 0;
@@ -224,8 +249,35 @@ export class GameApp {
     setTimeout(() => (this.toasts.value = this.toasts.value.filter((x) => x.id !== t.id)), 4500);
   }
 
+  private pushFx(fx: Omit<Fx, 'id' | 'at'>): void {
+    const now = performance.now();
+    this.fx.value = [...this.fx.value.filter((f) => now - f.at < 3000), { ...fx, id: ++this.seq, at: now }];
+  }
+
   private onEvent(e: GameEvent): void {
     if (e.type === 'move') this.lastHit.value = { side: e.side, at: performance.now(), crit: e.crit, eff: e.effectiveness };
+    if (e.type === 'captured') {
+      this.captures.value = [
+        { id: ++this.seq, at: Date.now(), uid: e.uid, species: e.species, shiny: e.shiny, newSpecies: e.newSpecies, transferred: e.transferred },
+        ...this.captures.value,
+      ].slice(0, 30);
+    }
+    if (!this.busy) {
+      const other = (side: 'player' | 'foe') => (side === 'player' ? 'foe' : 'player');
+      if (e.type === 'move') {
+        this.pushFx({
+          kind: e.missed ? 'miss' : 'hit', side: other(e.side), text: e.missed ? 'Errou' : `-${Math.max(1, Math.round(e.damage))}`,
+          tone: e.crit ? 'crit' : e.effectiveness > 1 ? 'super' : e.effectiveness < 1 ? 'weak' : undefined,
+        });
+      } else if (e.type === 'captureThrow') this.pushFx({ kind: 'throw', side: 'foe', success: e.success, ball: e.ball });
+      else if (e.type === 'captured') this.pushFx({ kind: 'caught', side: 'foe', text: e.newSpecies ? 'Nova espécie!' : 'Capturado!' });
+      else if (e.type === 'fainted') this.pushFx({ kind: 'faint', side: e.side });
+      else if (e.type === 'battleWon') {
+        if (e.money > 0) this.pushFx({ kind: 'reward', side: 'foe', text: `+₽ ${e.money}` });
+        if (e.xp > 0) this.pushFx({ kind: 'xp', side: 'player', text: `+${Math.round(e.xp)} XP` });
+      } else if (e.type === 'levelUp' && this.state.party[0] === e.uid) this.pushFx({ kind: 'levelUp', side: 'player', text: `Nv ${e.level}` });
+      else if (e.type === 'healed' && e.reason !== 'center') this.pushFx({ kind: 'heal', side: 'player', text: e.reason === 'revive' ? 'Revive' : 'Poção' });
+    }
     const d = describeEvent(this.data, this.state, e);
     if (!d) return;
     this.log.value = [{ id: ++this.seq, text: d.text, tone: d.tone }, ...this.log.value].slice(0, 80);

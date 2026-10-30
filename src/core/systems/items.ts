@@ -160,6 +160,7 @@ export function autoHeal(ctx: GameContext, state: GameState): void {
     if (pk.fainted) {
       if (s.autoRevive && (state.inventory['revive'] ?? 0) > 0) {
         useItem(ctx, state, 'revive', pk.uid);
+        state.hunt.spent = (state.hunt.spent ?? 0) + (itemDef(ctx, 'revive')?.price ?? 0);
         ctx.emit({ type: 'healed', reason: 'revive' });
       }
       continue;
@@ -174,6 +175,7 @@ export function autoHeal(ctx: GameContext, state: GameState): void {
     };
     const choice = owned.find((p) => heals(p) >= missing) ?? owned[owned.length - 1];
     useItem(ctx, state, choice, pk.uid);
+    state.hunt.spent = (state.hunt.spent ?? 0) + (itemDef(ctx, choice)?.price ?? 0);
     ctx.emit({ type: 'healed', reason: 'potion' });
   }
 }

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
-import { CroppedSprite, TYPE_NAMES, fmt, pct, useApp } from '../components';
+import { CroppedSprite, ItemIcon, TYPE_NAMES, fmt, pct, useApp } from '../components';
 import { requirementText } from '../text';
-import { Odds } from './Explore';
 import { TYPES, type TypeId } from '../../data/types';
 import type { ResolvedArea } from '../../data/registry';
-import { areaUnlocked, checkRequirement, isFarmArea, regionUnlocked, trainerLevel, winsToClear } from '../../core/world';
+import type { Requirement } from '../../data/content/types';
+import { areaUnlocked, checkRequirement, isFarmArea, regionUnlocked, trainerLevel } from '../../core/world';
 import { encounterTable } from '../../core/systems/exploration';
 import { typeEffectiveness } from '../../core/formulas/damage';
 import { estimateHunt, type HuntEstimate } from '../../core/analyzer';
@@ -21,6 +21,44 @@ interface Filters {
 }
 const EMPTY: Filters = { q: '', type: '', weakTo: '', notCaught: false, onlyOpen: false, legendary: false };
 
+interface Chapter {
+  id: string;
+  title: string;
+  sub: string;
+  areas: ResolvedArea[];
+  done: boolean;
+}
+
+/** Capítulos: cada ginásio/Liga fecha um capítulo com as rotas que vêm antes dele; o pós-jogo é agrupado à parte. */
+function chaptersOf(areas: ResolvedArea[], badges: string[], champions: string[]): Chapter[] {
+  const out: Chapter[] = [];
+  let cur: ResolvedArea[] = [];
+  let n = 1;
+  const post = new Map<string, ResolvedArea[]>();
+  for (const a of areas) {
+    const isPost = a.unlock.some((r) => r.type === 'championOf' && r.regionId === a.regionId);
+    if (isPost) {
+      const key = a.group ?? 'Pós-jogo';
+      post.set(key, [...(post.get(key) ?? []), a]);
+      continue;
+    }
+    cur.push(a);
+    if (a.gym || a.league) {
+      out.push({
+        id: a.id,
+        title: a.gym ? a.gym.badgeName : 'Liga Pokémon',
+        sub: `Capítulo ${n++}`,
+        areas: cur,
+        done: a.gym ? badges.includes(a.gym.badgeId) : champions.includes(a.regionId),
+      });
+      cur = [];
+    }
+  }
+  if (cur.length) out.push({ id: 'rest', title: 'Outras áreas', sub: `Capítulo ${n}`, areas: cur, done: false });
+  for (const [title, list] of post) out.push({ id: `post-${title}`, title, sub: 'Pós-jogo', areas: list, done: false });
+  return out;
+}
+
 export function MapScreen({ go }: ScreenProps) {
   const app = useApp();
   const s = app.state;
@@ -28,11 +66,11 @@ export function MapScreen({ go }: ScreenProps) {
   const [regionId, setRegion] = useState(currentRegion);
   const [f, setF] = useState<Filters>(EMPTY);
   const [estimates, setEstimates] = useState<Record<string, HuntEstimate>>({});
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const region = app.data.regionById.get(regionId)!;
   const hour = new Date().getHours();
   const invKey = Object.keys(s.inventory).length;
 
-  // Tabela de encontros (como está disponível agora) de cada área da região.
   const tables = useMemo(() => {
     const out = new Map<string, { species: string; weight: number }[]>();
     for (const def of region.areas) {
@@ -57,39 +95,41 @@ export function MapScreen({ go }: ScreenProps) {
   };
 
   const areas = region.areas.map((d) => app.data.areas.get(d.id)!);
-  const visible = areas.filter((a) => {
+  const visible = (a: ResolvedArea) => {
     if (f.onlyOpen && !areaUnlocked(s, app.data, a)) return false;
     if (!filtering) return true;
     if (!isFarmArea(a)) return false;
-    const mons = [...(tables.get(a.id) ?? []).map((m) => m.species), ...(a.legendaries ?? []).map((l) => l.species)];
-    return mons.some(speciesMatch);
-  });
+    return [...(tables.get(a.id) ?? []).map((m) => m.species), ...(a.legendaries ?? []).map((l) => l.species)].some(speciesMatch);
+  };
+  const chapters = chaptersOf(areas, s.player.badges, s.player.champions);
+  const unlockedCount = areas.filter((a) => areaUnlocked(s, app.data, a)).length;
+  const visibleCount = areas.filter(visible).length;
+  // Abertos por padrão: o capítulo atual e o próximo ainda não concluído; com filtro, todos que têm resultado.
+  const currentChapter = chapters.findIndex((c) => c.areas.some((a) => a.id === s.world.activeAreaId));
+  const firstOpen = chapters.findIndex((c) => !c.done);
+  const isOpen = (c: Chapter, i: number) =>
+    toggled[c.id] ?? (filtering || f.onlyOpen ? true : i === currentChapter || i === firstOpen);
 
   const set = (patch: Partial<Filters>) => setF({ ...f, ...patch });
-  const analyze = (areaId: string) => setEstimates({ ...estimates, [areaId]: estimateHunt(app.data, s, areaId, 20) });
 
   return (
-    <div class="col">
-      <section class="area-head">
-        <div>
-          <div class="area-head__eyebrow">Mapa</div>
-          <h1 class="area-head__name">{region.name}</h1>
-          <div class="area-head__meta">
-            <span>Treinador Nv {trainerLevel(s)}</span>
-            <span>Áreas liberadas {areas.filter((a) => areaUnlocked(s, app.data, a)).length}/{areas.length}</span>
-          </div>
+    <div class="map">
+      <section class="panel map__head">
+        <div class="map__title">
+          <h1>Mapa</h1>
+          <span class="map__summary pk-num">Treinador Nv {trainerLevel(s)} · {unlockedCount}/{areas.length} áreas liberadas</span>
         </div>
         <div class="pk-tabs" role="tablist">
           {app.data.regions.map((r) => (
             <button key={r.id} class="pk-tab" role="tab" aria-selected={r.id === regionId} onClick={() => setRegion(r.id)}>
-              {r.name}{!regionUnlocked(s, r) && <span class="pk-tab__lock"> · bloqueada</span>}
+              {r.name}{!regionUnlocked(s, r) && <span class="lock" aria-label="bloqueada" />}
             </button>
           ))}
         </div>
       </section>
 
       {!regionUnlocked(s, region) && (
-        <p class="pk-route__req is-bad" style={{ margin: 0 }}>Região bloqueada: {region.unlock.map((r) => requirementText(app.data, r)).join(', ')}.</p>
+        <div class="map__notice"><span class="lock" />Região bloqueada · {region.unlock.map((r) => requirementText(app.data, r)).join(', ')}</div>
       )}
 
       <div class="pk-filter" role="search">
@@ -106,28 +146,59 @@ export function MapScreen({ go }: ScreenProps) {
         <button class="pk-chip-btn" aria-pressed={f.onlyOpen} onClick={() => set({ onlyOpen: !f.onlyOpen })}>Só liberadas</button>
         <button class="pk-chip-btn" aria-pressed={f.legendary} onClick={() => set({ legendary: !f.legendary })}>Lendários</button>
         {(filtering || f.onlyOpen) && <button class="pk-btn pk-btn--ghost pk-btn--sm" onClick={() => setF(EMPTY)}>Limpar</button>}
-        <span class="pk-filter__count">{visible.length} de {areas.length} áreas</span>
+        <span class="pk-filter__count">{visibleCount} de {areas.length} áreas</span>
       </div>
 
-      <div class="route-list">
-        {visible.map((a) => (
-          <RouteCard
-            key={a.id}
-            area={a}
-            table={tables.get(a.id) ?? []}
-            match={filtering ? speciesMatch : undefined}
-            estimate={estimates[a.id]}
-            onAnalyze={() => analyze(a.id)}
-            onGo={() => app.dispatch({ type: 'SelectArea', areaId: a.id }).ok && go('explore')}
-          />
-        ))}
-        {!visible.length && <p class="pk-muted">Nenhuma área desta região tem Pokémon que combinem com o filtro.</p>}
-      </div>
+      {chapters.map((c, i) => {
+        const list = c.areas.filter(visible);
+        if (!list.length) return null;
+        const open = isOpen(c, i);
+        const unlocked = c.areas.filter((a) => areaUnlocked(s, app.data, a)).length;
+        return (
+          <section key={c.id} class={`chapter ${c.done ? 'is-done' : ''}`}>
+            <button class="chapter__head" aria-expanded={open} onClick={() => setToggled({ ...toggled, [c.id]: !open })}>
+              <span class="chapter__chev" aria-hidden="true" />
+              <span class="chapter__sub">{c.sub}</span>
+              <span class="chapter__title">{c.title}</span>
+              {c.done && <span class="tag tag--gold">Concluído</span>}
+              <span class="chapter__count pk-num">{unlocked}/{c.areas.length}</span>
+            </button>
+            {open && (
+              <ul class="routes">
+                {list.map((a) => (
+                  <RouteRow
+                    key={a.id}
+                    area={a}
+                    table={tables.get(a.id) ?? []}
+                    match={filtering ? speciesMatch : undefined}
+                    estimate={estimates[a.id]}
+                    onAnalyze={() => setEstimates({ ...estimates, [a.id]: estimateHunt(app.data, s, a.id, 20) })}
+                    onGo={() => app.dispatch({ type: 'SelectArea', areaId: a.id }).ok && go('explore')}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+      {!visibleCount && <p class="panel__empty">Nenhuma área desta região tem Pokémon que combinem com o filtro.</p>}
     </div>
   );
 }
 
-function RouteCard(props: {
+/** Requisito pendente em forma compacta (cadeado + o que falta). */
+function Missing({ r }: { r: Requirement }) {
+  const app = useApp();
+  if (r.type === 'trainerLevel') return <span class="need" title={`Exige Nível de Treinador ${r.min}`}><span class="lock" />Nv {r.min}</span>;
+  if (r.type === 'keyItem') {
+    return <span class="need" title={`Exige ${requirementText(app.data, r)}`}><span class="lock" /><ItemIcon id={r.itemId} size={20} /></span>;
+  }
+  if (r.type === 'badge') return <span class="need" title={`Exige ${requirementText(app.data, r)}`}><span class="lock" />{requirementText(app.data, r).replace('Insígnia ', '')}</span>;
+  if (r.type === 'championOf') return <span class="need" title={requirementText(app.data, r)}><span class="lock" />Campeão</span>;
+  return <span class="need" title={requirementText(app.data, r)}><span class="lock" />{requirementText(app.data, r)}</span>;
+}
+
+function RouteRow(props: {
   area: ResolvedArea;
   table: { species: string; weight: number }[];
   match?: (k: string) => boolean;
@@ -145,55 +216,53 @@ function RouteCard(props: {
   const champion = a.league && s.player.champions.includes(a.regionId);
   const missing = a.unlock.filter((r) => !checkRequirement(s, r));
   const challenge = !!(a.gym || a.league);
-  const hasMatch = props.match && [...props.table.map((m) => m.species), ...(a.legendaries ?? []).map((l) => l.species)].some(props.match);
-
-  let status: preact.ComponentChildren;
-  if (current) status = <span class="pk-route__req">Você está aqui{isFarmArea(a) && !p?.cleared && winsToClear(a) > 0 ? ` · ${Math.min(p?.wins ?? 0, winsToClear(a))}/${winsToClear(a)} vitórias para concluir` : ''}</span>;
-  else if (won) status = <span class="pk-route__req good">{a.gym!.badgeName} conquistada</span>;
-  else if (champion) status = <span class="pk-route__req good">Campeão · revanche disponível</span>;
-  else if (!open) status = <span class="pk-route__req is-bad">Requer {missing.map((r) => requirementText(app.data, r)).join(' e ')}</span>;
-  else if (p?.cleared) status = <span class="pk-route__req good">Concluída</span>;
-  else status = <span class="pk-route__req">Liberada{a.trainerLevel > 1 ? ` · Treinador Nv ${a.trainerLevel}` : ''}</span>;
-
-  const team = a.gym ? a.gym.leader.team : a.league ? a.league.members[a.league.members.length - 1].team : [];
+  const region = app.data.regionById.get(a.regionId)!;
+  const mons = challenge
+    ? (a.gym ? a.gym.leader.team : a.league!.members[a.league!.members.length - 1].team).map((m) => ({ species: m.species, label: `Nv ${Math.round(region.levelOffset + m.level * region.levelScale)}` }))
+    : [
+        ...props.table.map((m) => ({ species: m.species, label: m.weight < 0.01 ? '<1%' : pct(m.weight) })),
+        ...(a.legendaries ?? []).map((l) => ({ species: l.species, label: 'Lend.' })),
+      ];
+  const caught = mons.filter((m) => (s.pokedex[m.species]?.caught ?? 0) > 0).length;
+  const state = current ? 'is-current' : won || champion || p?.cleared ? 'is-done' : open ? 'is-open' : 'is-locked';
   return (
-    <article class={`pk-route ${current ? 'is-current' : ''} ${!open && !won ? 'is-locked' : ''} ${hasMatch ? 'is-match' : ''}`}>
-      <div class="route-main">
-        <div class="pk-route__title">
-          {a.name}
-          <span class="pk-route__lv">Nv {a.levelRange[0]}–{a.levelRange[1]}</span>
-          {a.statMult > 1 && <span class="pk-route__lv">×{a.statMult.toFixed(2)}</span>}
-          {challenge && <span class="kind">{a.league ? 'Liga' : 'Ginásio'}</span>}
-        </div>
-        {status}
-        {props.estimate && (
-          <span class="pk-route__req pk-num">
-            Projeção: {fmt(props.estimate.xpPerHour)} XP/h · ₽ {fmt(props.estimate.moneyPerHour)}/h · vitória {pct(props.estimate.winRate)} · {props.estimate.capturesPerHour.toFixed(1)} capturas/h
-          </span>
-        )}
+    <li class={`route ${state} ${props.match && mons.some((m) => props.match!(m.species)) ? 'is-match' : ''}`}>
+      <span class="route__dot" aria-hidden="true" />
+      <div class="route__name">
+        <span class="route__title">{a.name}{challenge && <span class="route__kind">{a.league ? 'Liga' : 'Ginásio'}</span>}</span>
+        <span class="route__meta pk-num">
+          Nv {a.levelRange[0]}–{a.levelRange[1]}
+          {!challenge && mons.length > 0 && <> · {caught}/{mons.length} capturados</>}
+          {current && <> · <b>você está aqui</b></>}
+        </span>
       </div>
-      <div class="pk-row route-actions">
-        {open && isFarmArea(a) && !props.estimate && <button class="pk-btn pk-btn--ghost pk-btn--sm" onClick={props.onAnalyze}>Analisar</button>}
+      <div class="route__mons">
+        {mons.slice(0, 12).map((m) => {
+          const seen = (s.pokedex[m.species]?.seen ?? 0) > 0;
+          const got = (s.pokedex[m.species]?.caught ?? 0) > 0;
+          return (
+            <span key={m.species} class={`mon ${props.match?.(m.species) ? 'is-match' : ''} ${got ? 'is-caught' : ''}`} title={`${seen ? speciesOf(app.data, m.species).name : 'Ainda não visto'} · ${m.label}`}>
+              <CroppedSprite id={speciesOf(app.data, m.species).id} box={36} class={seen ? '' : 'is-silhouette'} />
+              <span class="mon__pct">{m.label}</span>
+            </span>
+          );
+        })}
+        {mons.length > 12 && <span class="route__more">+{mons.length - 12}</span>}
+        {!mons.length && <span class="route__meta">Só pesca ou Surf</span>}
+      </div>
+      <div class="route__side">
+        {props.estimate && (
+          <span class="route__est pk-num" title="Projeção do Hunt Analyzer">{fmt(props.estimate.xpPerHour)} XP/h · ₽ {fmt(props.estimate.moneyPerHour)}/h · {pct(props.estimate.winRate)}</span>
+        )}
+        {!open && !won && missing.map((r, i) => <Missing key={i} r={r} />)}
+        {open && isFarmArea(a) && !props.estimate && !current && <button class="pk-btn pk-btn--ghost pk-btn--sm" onClick={props.onAnalyze}>Analisar</button>}
         {open && !current && !won && (
           <button class={`pk-btn pk-btn--sm ${challenge ? 'pk-btn--chassis' : 'pk-btn--primary'}`} onClick={props.onGo}>
             {challenge ? (champion ? 'Revanche' : 'Desafiar') : 'Ir'}
           </button>
         )}
+        {won && <span class="tag tag--gold">Insígnia</span>}
       </div>
-      <div class="pk-route__mons">
-        {challenge
-          ? team.map((m, i) => (
-              <div key={i} class="pk-odds" title={app.state.pokedex[m.species]?.seen ? speciesOf(app.data, m.species).name : 'Ainda não visto'}>
-                <CroppedSprite id={speciesOf(app.data, m.species).id} box={56} class={(app.state.pokedex[m.species]?.seen ?? 0) > 0 ? '' : 'is-silhouette'} />
-                <span class="pk-odds__pct">Nv {Math.round(app.data.regionById.get(a.regionId)!.levelOffset + m.level * app.data.regionById.get(a.regionId)!.levelScale)}</span>
-              </div>
-            ))
-          : props.table.map((m) => <Odds key={m.species} speciesKey={m.species} weight={m.weight} match={props.match?.(m.species)} />)}
-        {(a.legendaries ?? []).map((l) => <Odds key={l.species} speciesKey={l.species} label="Lendário" match={props.match?.(l.species)} />)}
-        {!challenge && !props.table.length && !(a.legendaries ?? []).length && (
-          <span class="pk-route__req">Sem encontros a pé: exige Vara de Pesca ou Surf.</span>
-        )}
-      </div>
-    </article>
+    </li>
   );
 }

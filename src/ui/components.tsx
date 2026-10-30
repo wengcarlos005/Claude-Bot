@@ -7,7 +7,12 @@ import type { TypeId } from '../data/types';
 import type { OwnedPokemon } from '../core/state/types';
 
 export const AppContext = createContext<GameApp>(null as unknown as GameApp);
-export const useApp = () => useContext(AppContext);
+/** Acesso ao jogo. Ler `frame` inscreve o componente no loop: componentes sem props também atualizam a cada tick. */
+export const useApp = () => {
+  const app = useContext(AppContext);
+  app.frame.value;
+  return app;
+};
 
 export const fmt = (n: number) => Math.round(n).toLocaleString('pt-BR');
 export const pct = (n: number) => `${Math.round(n * 100)}%`;

@@ -119,6 +119,8 @@ export interface AreaDef {
   /** Itens-chave recebidos ao concluir a área. */
   clearReward?: { items?: Record<string, number>; money?: number };
   tags?: string[];
+  /** Capítulo do Mapa para áreas de pós-jogo (ex.: "Ilhas Sevii"). */
+  group?: string;
 }
 
 export interface RegionDef {
