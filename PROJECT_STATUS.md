@@ -50,6 +50,18 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
   vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
 - XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
 
+### Visual de GBA, mapa em trilha e Hub sem sobreposição (30/10)
+- **Pele de GBA:** painéis, menus, botões e placas com molduras de pixel (9 fatias, 2×) no lugar do "vidro"; fonte pixel
+  nos rótulos; tema Dia e Noite.
+- **Ícones do PokéSprite em tudo:** menu lateral (Town Map, Poké Ball, PC, Mochila…), carteira (moeda, PP Up,
+  Poké Ball), itens da Mochila/Loja/Oficina e fragmentos; ícones de Pokémon (caixa do PC) no mapa e nas abas de região.
+- **Hub:** a cidade ocupa a área de cima inteira (enquadrada e sem faixas vazias) e os painéis ficam numa linha
+  embaixo, sem cobrir nada; placas mostram só o título (descrição ao passar o mouse).
+- **Mapa em trilha:** todas as localidades numa trilha contínua em zigue-zague, na ordem da aventura, desenhada com
+  tiles reais do FireRed (grama, grama alta, areia, água, flores e árvores). Paradas com o Pokémon da área (o primeiro
+  ainda não capturado), líderes de ginásio com a insígnia, cadeado nas bloqueadas e o seu treinador onde você está.
+  Abas "Mapa" e "Lista e filtros" no topo. O mundo costurado de Kanto/Hoenn saiu (tinha muito espaço vazio).
+
 ### Oficina, fragmentos e novo Hub (30/10)
 - **Fragmentos** (vermelho, azul, verde, amarelo) caem de selvagens, treinadores, desafios, insígnias, Campeão, shinies e
   lendários; regiões avançadas rendem mais (×1,5 por região).

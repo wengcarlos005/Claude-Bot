@@ -31,7 +31,7 @@ try {
   await page.waitForFunction(() => window.pokemonIdle.state.stats.battlesWon + window.pokemonIdle.state.stats.captures > 0, null, { timeout: 20000 });
   const s1 = await page.evaluate(() => ({ won: window.pokemonIdle.state.stats.battlesWon, party: window.pokemonIdle.state.party.length }));
   if (shots) await page.screenshot({ path: `${shots}/explore.png` });
-  for (const label of ['Hunt', 'Mapas', 'Equipe', 'PC', 'Pokédex', 'Inventário', 'Loja', 'Pesquisa', 'Automações', 'Estatísticas', 'Hub']) {
+  for (const label of ['Hunt', 'Mapas', 'Equipe', 'PC', 'Pokédex', 'Inventário', 'Loja', 'Oficina', 'Pesquisa', 'Automações', 'Estatísticas', 'Hub']) {
     await page.click(`.sidenav__item:has-text("${label}")`);
     await page.waitForTimeout(300);
     if (shots) await page.screenshot({ path: `${shots}/${label}.png` });
@@ -40,7 +40,7 @@ try {
   await page.click('.place__tabs button:has-text("Detalhes")');
   await page.click('button:has-text("Analisar hunt")');
   await page.waitForSelector('text=XP/h ·', { timeout: 10000 });
-  await page.click('button:has-text("Ver lista e filtros")');
+  await page.click('.pk-tab:has-text("Lista e filtros")');
   await page.waitForSelector('.chapter', { timeout: 5000 });
   await page.evaluate(() => window.pokemonIdle.save());
   await page.reload();

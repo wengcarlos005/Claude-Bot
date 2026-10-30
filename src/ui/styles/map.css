@@ -16,31 +16,7 @@
 .region-tab__lock::before { content: ''; position: absolute; left: 1.5px; bottom: 6px; width: 6px; height: 5px; border: 1.5px solid #fff; border-bottom: 0; border-radius: 4px 4px 0 0; box-sizing: border-box; }
 
 .atlas__main { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: var(--space-3); align-items: start; }
-.world { border-radius: var(--radius-lg); border: 2px solid var(--bezel); box-shadow: var(--bevel); overflow: auto; max-height: calc(100vh - 290px); min-height: 420px; background: #2f78c8; }
-.world__canvas { position: relative; width: 100%; background-size: 100% 100%; image-rendering: pixelated; }
 
-.pin { position: absolute; transform: translate(-50%, -50%); padding: 0; border: 0; background: none; cursor: pointer; display: grid; justify-items: center; z-index: 2; }
-.pin__dot { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 4px solid var(--lens); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(10, 18, 34, 0.6); }
-.pin.is-locked .pin__dot { background: #6b7280; border-color: #374151; }
-.pin.is-done .pin__dot { border-color: var(--good); }
-.pin--town .pin__dot { width: 26px; height: 26px; border-width: 5px; border-color: var(--chassis); background: radial-gradient(circle, #fff 0 30%, #1d1a26 31% 45%, #fff 46%); }
-.pin--town.is-locked .pin__dot { filter: grayscale(1) brightness(0.7); }
-.pin.is-sel .pin__dot { box-shadow: 0 0 0 3px var(--gold), 0 2px 0 rgba(0, 0, 0, 0.45); }
-.pin:hover .pin__dot { transform: scale(1.15); }
-.pin:focus-visible { outline: none; }
-.pin:focus-visible .pin__dot { box-shadow: 0 0 0 3px var(--focus); }
-.pin__label {
-  position: absolute; top: calc(100% + 4px); display: grid; justify-items: center; white-space: nowrap; pointer-events: none;
-  padding: 3px 10px 4px; border-radius: var(--radius-md); background: rgba(9, 16, 32, 0.9); border: 1px solid rgba(255, 255, 255, 0.16); color: #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-}
-.pin__label b { font-family: var(--font-display); font-weight: 600; font-size: 13px; }
-.pin__label .pk-num { font-family: var(--font-lcd); font-size: 14px; line-height: 13px; color: #c8d6f0; }
-.pin.is-here .pin__label { border-color: var(--good); }
-.pin.is-sel .pin__label { border-color: var(--gold); }
-.pin__marker { position: absolute; bottom: calc(100% + 2px); width: 22px; height: 30px; background: var(--good);
-  clip-path: path('M11 30 C 11 30 0 17 0 11 A 11 11 0 1 1 22 11 C 22 17 11 30 11 30 Z'); filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5)); animation: pin-bob 1.2s ease-in-out infinite; }
-.pin__marker::after { content: ''; position: absolute; left: 6px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
-@keyframes pin-bob { 50% { transform: translateY(-4px); } }
 
 /* Painel da localidade */
 .place { position: sticky; top: 92px; display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 110px); }
@@ -99,18 +75,53 @@
 @media (max-width: 1000px) {
   .atlas__main { grid-template-columns: minmax(0, 1fr); }
   .place { position: static; max-height: none; }
-  .world { max-height: 70vh; }
 }
 @media (max-width: 640px) {
   .region-tabs { grid-template-columns: repeat(4, minmax(110px, 1fr)); overflow-x: auto; }
   .atlas__badges { flex-wrap: wrap; }
-  .pin__label { display: none; }
-  .pin.is-here .pin__label, .pin.is-sel .pin__label { display: grid; }
 }
-.world { position: relative; }
-.world.is-real .world__canvas { image-rendering: auto; background-color: #2c5236; }
-.world__loading { position: sticky; top: 50%; left: 50%; z-index: 5; width: max-content; margin: 0 auto -44px; transform: none; }
-.world__others { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 12px; background: var(--screen); border-top: 2px solid var(--bezel); font-size: 12px; color: var(--ink-muted); }
-.world__others > span { font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 4px; }
-.world.is-real .pin__dot { width: 14px; height: 14px; border-width: 3px; }
-.world.is-real .pin--town .pin__dot { width: 20px; height: 20px; border-width: 4px; }
+
+/* ---------- Trilha da região (MapTrail) ---------- */
+.atlas__modes { align-self: flex-start; }
+.trail {
+  position: relative; overflow: auto; max-height: calc(100vh - 300px); min-height: 440px; background: #0a1222;
+  border: 6px solid transparent; border-image: var(--frame) 5 / 10px / 4px; scrollbar-width: thin; image-rendering: pixelated;
+}
+.trail__board { position: relative; margin: 0 auto; }
+.trail__canvas { display: block; image-rendering: pixelated; }
+.stop { position: absolute; width: 0; height: 0; padding: 0; border: 0; background: none; cursor: pointer; color: #fff; z-index: 1; }
+.stop:hover, .stop:focus-visible, .stop.is-sel { z-index: 3; }
+.stop:focus-visible { outline: none; }
+.stop__disc {
+  position: absolute; left: 0; top: 0; width: 64px; height: 64px; transform: translate(-50%, -50%); display: grid; place-items: center;
+  border: 6px solid transparent; border-image: var(--frame-night) 5 fill / 10px; filter: drop-shadow(0 4px 0 rgba(2, 6, 14, 0.55));
+  transition: transform var(--dur-tap);
+}
+.stop:hover .stop__disc, .stop:focus-visible .stop__disc { transform: translate(-50%, -50%) translateY(-3px); }
+.stop.is-sel .stop__disc, .stop:focus-visible .stop__disc { border-image-source: var(--frame-gold); }
+.stop__icon { position: absolute; left: 50%; top: 50%; width: 136px; height: 112px; transform: translate(-50%, -64%); image-rendering: pixelated; max-width: none; }
+.stop__icon.is-unseen { filter: brightness(0) opacity(0.55); }
+.stop__icon--item { width: 40px; height: 40px; transform: translate(-50%, -50%); }
+.stop--gym .stop__disc { width: 78px; height: 78px; overflow: hidden; border-image-source: var(--frame-gold); }
+.stop--gym .stop__disc { background: radial-gradient(circle at 50% 70%, #3b5d9e, #10182e 70%); }
+.stop__leader { position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; transform: translate(-50%, -44%); image-rendering: pixelated; max-width: none; }
+.stop__badge { position: absolute; left: 22px; top: 18px; width: 26px; height: 26px; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6)); }
+.stop__badge.is-off { filter: grayscale(1) brightness(0.55); }
+.stop__ok { position: absolute; left: 14px; top: 10px; width: 28px; height: 28px; image-rendering: pixelated; }
+.stop__lock { position: absolute; left: 14px; top: -46px; width: 28px; height: 28px; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.7)); }
+.stop.is-locked .stop__icon, .stop.is-locked .stop__leader { filter: grayscale(1) brightness(0.75); }
+.stop.is-locked .stop__label { opacity: 0.75; }
+.stop.is-here .stop__disc { border-image: var(--btn-blue) 3 fill / 10px; }
+.stop__me { position: absolute; left: 0; top: -50px; width: 64px; height: 64px; transform: translate(-50%, -50%); image-rendering: pixelated; pointer-events: none; animation: me-bob 1.2s steps(2) infinite; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45)); }
+@keyframes me-bob { 50% { transform: translate(-50%, calc(-50% - 4px)); } }
+.stop__label {
+  position: absolute; left: 0; top: 36px; transform: translateX(-50%); width: max-content; display: grid; justify-items: center; white-space: nowrap; line-height: 1.05;
+  padding: 1px 8px 2px; border: 4px solid transparent; border-image: var(--frame-night) 5 fill / 8px; pointer-events: none;
+}
+.stop--gym .stop__label { top: 46px; }
+.stop__label b { max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.02em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+.stop__label span { font-family: var(--font-lcd); font-size: 14px; color: #c8d6f0; }
+.stop.is-done .stop__label b { color: var(--gold); }
+.region-tab__thumb { display: flex; justify-content: center; align-items: center; gap: 0; overflow: hidden; background: linear-gradient(#7fd3b0, #5fbf94); box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12); }
+.region-tab__thumb img { width: 102px; height: 84px; margin: -18px -26px -6px; image-rendering: pixelated; }
+.region-tab.is-locked .region-tab__thumb img { filter: brightness(0) opacity(0.45); }
