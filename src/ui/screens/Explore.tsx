@@ -5,6 +5,7 @@ import { activeMember, displayName, maxHpOf, speciesOf } from '../../core/pokemo
 import { encounterTable } from '../../core/systems/exploration';
 import { areaProgress, isFarmArea, levelCap, winsToClear } from '../../core/world';
 import { computeBonuses } from '../../core/bonuses';
+import { Tips } from './Tips';
 
 export function ExploreScreen({ go }: ScreenProps) {
   const app = useApp();
@@ -20,6 +21,7 @@ export function ExploreScreen({ go }: ScreenProps) {
           <Scene />
           <AreaProgress />
         </Window>
+        <Tips go={go} />
         <HuntMetrics />
         <PartyStrip go={go} />
       </div>

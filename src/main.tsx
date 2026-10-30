@@ -13,6 +13,10 @@ try {
   /* armazenamento indisponível */
 }
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('Service worker não registrado', e));
+}
+
 GameApp.boot()
   .then((app) => {
     render(<App app={app} />, root);
