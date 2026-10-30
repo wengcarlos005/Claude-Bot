@@ -1,6 +1,8 @@
 import { useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
 import { Window, useApp } from '../components';
+import { trainerSprite } from '../../app/assets';
+import { AVATARS, DEFAULT_AVATAR } from '../../data/content/avatars';
 
 export function SettingsScreen(_: ScreenProps) {
   const app = useApp();
@@ -22,6 +24,13 @@ export function SettingsScreen(_: ScreenProps) {
         <Window title="Treinador">
           <div class="row">
             <label>Nome: <input value={s.player.name} maxLength={16} onChange={(e) => app.dispatch({ type: 'SetPlayerName', name: (e.target as HTMLInputElement).value })} /></label>
+          </div>
+          <div class="avatars" role="radiogroup" aria-label="Avatar do treinador">
+            {AVATARS.map((a) => (
+              <button key={a.id} role="radio" aria-checked={(s.player.avatar ?? DEFAULT_AVATAR) === a.id} class="avatar-opt" onClick={() => app.dispatch({ type: 'SetAvatar', avatar: a.id })} title={a.name}>
+                <img src={trainerSprite(a.id)} width={64} height={64} alt={a.name} />
+              </button>
+            ))}
           </div>
           <div class="row" style={{ marginTop: '8px' }}>
             Tema:

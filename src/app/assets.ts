@@ -23,3 +23,13 @@ export function staticFallback(id: number, view: SpriteView = 'front', shiny = f
 export function itemSprite(itemId: string, override?: string): string {
   return `${BASE}/items/${override ?? itemId}.png`;
 }
+
+/** Sprite de treinador (avatar). */
+export function trainerSprite(id: string): string {
+  return `https://play.pokemonshowdown.com/sprites/trainers/${id}.png`;
+}
+
+/** Ícone de insígnia (1–8 Kanto, 9–16 Johto, 17–24 Hoenn, 25–32 Sinnoh). */
+export function badgeSprite(n: number): string {
+  return `${BASE}/badges/${n}.png`;
+}

@@ -23,10 +23,11 @@ Legenda: ✅ concluída · 🔶 em andamento · ⏳ próxima · ○ futura
 | 1.12 | **Interface nova** | ✅ | Jogo inteiro no Design System, sem emoji; Mapa com sprites e chance de cada Pokémon por rota e filtros (nome, tipo, fraco contra, não capturados, liberadas, lendários) | E2E + capturas de tela desktop/celular, Noite e Dia |
 | 1.13 | **Hub e batalha na rota** | ✅ | Painel com colunas fixas (treinador, Pokémon em campo, equipe, automações, registro), barra de ícones, sessão de hunt com métricas por hora (XP de Treinador, XP de Pokémon, lucro líquido, abates, capturas) e capturas recentes. Cena da rota em pixel art: o Pokémon anda até o próximo selvagem e batalha ali, com dano, desmaio, arremesso da Poké Ball, dia/noite e 10 biomas | E2E + capturas de tela desktop/celular |
 | 1.14 | **Mapa com capítulos e 100+ áreas** | ✅ | Kanto 135, Johto 155, Hoenn 103, Sinnoh 153 áreas (andares e zonas reais, Ilhas Sevii, Kanto de HG/SS). Mapa agrupado por capítulo (ginásio), linhas enxutas, cadeado compacto no lugar de "Requer…" | Testes + simulação |
-| 1.15 | **Economia de itens de treinador** | ⏳ | Melhorias de treinador (Tênis de Corrida etc.) viram itens fabricados com fragmentos ou comprados de outros jogadores; a loja do jogo vende só buffs e cosméticos | Simulação + playtest |
-| 1.16 | Polimento visual | ⏳ | Telas secundárias (Loja, Mochila, Pesquisa, Análises, detalhe do Pokémon) no padrão do hub; animação de evolução | Revisão visual com você |
-| 1.17 | Playtest | ⏳ | Você joga a primeira hora e uma troca de região; ajustamos ritmo e clareza | Notas do playtest → calibração |
-| 1.18 | Áudio e acessibilidade | ○ | Música/efeitos opcionais; auditoria Lighthouse ≥ 90 | Lighthouse |
+| 1.15 | **Direção de arte "jogo"** | ✅ | Visual inspirado nas referências: tema azul-marinho, barra superior com avatar e carteira, menu lateral com ícones; Hub como cidade em pixel art com prédios clicáveis; mapa ilustrado com trilha, pinos e painel "Iniciar hunt"; hunt em tela cheia vista de cima com painéis flutuantes e golpes coloridos por tipo; avatar do treinador (cosmético) | E2E + capturas de tela desktop/celular |
+| 1.16 | **Economia de itens de treinador** | ⏳ | Melhorias de treinador (Tênis de Corrida etc.) viram itens fabricados com fragmentos ou comprados de outros jogadores; a loja do jogo vende só buffs e cosméticos | Simulação + playtest |
+| 1.17 | Polimento visual | ⏳ | Telas secundárias (Loja, Mochila, Pesquisa, Análises, detalhe do Pokémon) no padrão do hub; animação de evolução | Revisão visual com você |
+| 1.18 | Playtest | ⏳ | Você joga a primeira hora e uma troca de região; ajustamos ritmo e clareza | Notas do playtest → calibração |
+| 1.19 | Áudio e acessibilidade | ○ | Música/efeitos opcionais; auditoria Lighthouse ≥ 90 | Lighthouse |
 
 ## Fase 2 — Conta e servidor
 | # | Etapa | Status | O que entrega |
