@@ -54,9 +54,15 @@ export function awardDefeat(
   return total;
 }
 
-/** Vitória do Pokémon ativo: Maestria da espécie, contador individual e amizade (+1 a cada 3 vitórias; ×2 com Soothe Bell). */
-export function creditWin(state: GameState, pk: OwnedPokemon): void {
+/**
+ * Vitória do Pokémon ativo: Maestria da espécie, contador individual e amizade (+1 a cada 3 vitórias; ×2 com Soothe Bell).
+ * Quando a amizade sobe, verifica evoluções (cobre Pokémon parados no teto de nível, que não sobem mais de nível).
+ */
+export function creditWin(ctx: GameContext, state: GameState, pk: OwnedPokemon): void {
   pk.wins++;
   state.mastery[pk.species] = (state.mastery[pk.species] ?? 0) + 1;
-  if (pk.wins % 3 === 0) pk.friendship = Math.min(255, pk.friendship + (pk.heldItem === 'soothe-bell' ? 2 : 1));
+  if (pk.wins % 3 === 0 && pk.friendship < 255) {
+    pk.friendship = Math.min(255, pk.friendship + (pk.heldItem === 'soothe-bell' ? 2 : 1));
+    tryLevelEvolution(ctx, state, pk);
+  }
 }

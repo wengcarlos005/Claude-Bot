@@ -118,7 +118,7 @@ export function buyItem(ctx: GameContext, state: GameState, itemId: string, qty:
 export function sellItem(ctx: GameContext, state: GameState, itemId: string, qty: number): Result {
   const item = itemDef(ctx, itemId);
   if (item.category === 'key') return fail('Itens-chave não podem ser vendidos.');
-  if ((state.inventory[itemId] ?? 0) < qty || qty < 1) return fail('Quantidade inválida.');
+  if (!Number.isInteger(qty) || qty < 1 || (state.inventory[itemId] ?? 0) < qty) return fail('Quantidade inválida.');
   const unit = Math.floor((item.price ?? 1000) / 2);
   consume(state, itemId, qty);
   state.player.money += unit * qty;
@@ -186,7 +186,7 @@ export function autoBuy(ctx: GameContext, state: GameState): void {
   if (stock >= s.autoBuyMinStock) return;
   const item = shopAvailable(ctx, state).find((i) => i.id === s.autoBuyItem);
   if (!item?.price) return;
-  const budget = Math.floor(state.player.money * s.autoBuyBudget);
+  const budget = Math.floor(Math.max(0, state.player.money) * Math.min(1, Math.max(0, s.autoBuyBudget)));
   const qty = Math.min(s.autoBuyMinStock * 2 - stock, Math.floor(budget / item.price));
   if (qty <= 0) return;
   state.player.money -= qty * item.price;

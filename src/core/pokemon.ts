@@ -86,9 +86,10 @@ export function toCombatant(state: GameState, data: GameData, pk: OwnedPokemon, 
   const level = Math.min(pk.level, cap);
   const full = pokemonStats(state, data, pk, globalStatMult);
   const stats = level === pk.level ? full : calcStats(sp.baseStats, pk.ivs, pk.evs, level, pk.nature, statBonusMult(state, data, pk, globalStatMult));
+  const hpScale = full.hp / stats.hp;
   return {
     uid: pk.uid, species: pk.species, level, stats, types: sp.types, moves: movesFor(data, pk.species, level),
-    hp: Math.min(pk.hp, full.hp), maxHp: full.hp, shiny: pk.shiny, heldItem: pk.heldItem,
+    hp: Math.min(pk.hp, full.hp) / hpScale, maxHp: stats.hp, shiny: pk.shiny, heldItem: pk.heldItem, hpScale,
   };
 }
 

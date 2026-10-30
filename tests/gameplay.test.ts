@@ -159,3 +159,48 @@ describe('conquistas', () => {
     expect(new Set(state.achievements).size).toBe(state.achievements.length);
   });
 });
+
+describe('regressões da revisão de código', () => {
+  it('Transfer é atômico e não esvazia a equipe', async () => {
+    const { core, state } = await newCore(12);
+    core.dispatch({ type: 'ChooseStarter', species: 'bulbasaur' });
+    const extra = createPokemon(core.ctx, state, 'pidgey', 5, { origin: 'gift' });
+    addPokemon(state, extra);
+    const money = state.player.money;
+    expect(core.dispatch({ type: 'Transfer', uids: [extra.uid, state.party[0]] }).ok).toBe(false);
+    expect(state.pokemon[extra.uid]).toBeDefined();
+    expect(state.player.money).toBe(money);
+    expect(core.dispatch({ type: 'Transfer', uids: [extra.uid] }).ok).toBe(true);
+  });
+
+  it('valida configurações, venda fracionada e índices de preset', async () => {
+    const { core, state } = await newCore(13);
+    core.dispatch({ type: 'ChooseStarter', species: 'bulbasaur' });
+    core.dispatch({ type: 'SetSettings', settings: { autoBuyBudget: 10, autoBuyMinStock: -5, autoPotionThreshold: 7 } });
+    expect(state.settings.autoBuyBudget).toBe(1);
+    expect(state.settings.autoBuyMinStock).toBe(0);
+    expect(state.settings.autoPotionThreshold).toBeLessThanOrEqual(0.95);
+    expect(core.dispatch({ type: 'SellItem', itemId: 'potion', qty: 1.5 }).ok).toBe(false);
+    core.dispatch({ type: 'SavePreset', name: 'a' });
+    expect(core.dispatch({ type: 'DeletePreset', index: -1 }).ok).toBe(false);
+    expect(core.dispatch({ type: 'DeletePreset', index: 5 }).ok).toBe(false);
+    expect(state.presets.length).toBe(1);
+  });
+
+  it('obediência limita também os PS em batalha', async () => {
+    const { core, state, data } = await newCore(14);
+    core.dispatch({ type: 'ChooseStarter', species: 'bulbasaur' });
+    const g = createPokemon(core.ctx, state, 'gyarados', 60, { origin: 'gift' });
+    const { toCombatant, maxHpOf } = await import('../src/core/pokemon');
+    const c = toCombatant(state, data, g, 1, 16);
+    expect(c.level).toBe(16);
+    expect(c.maxHp).toBeLessThan(maxHpOf(state, data, g) / 2);
+    expect(c.hp * c.hpScale!).toBeCloseTo(g.hp);
+  });
+
+  it('treinadores de rota usam o Tier da área desde o primeiro Pokémon', async () => {
+    const { data } = await newCore();
+    const area = data.areas.get('sinnoh-route-202') ?? [...data.areas.values()].find((a) => a.regionId === 'sinnoh' && a.routeTrainers.length)!;
+    expect(area.statMult).toBeGreaterThan(1);
+  });
+});

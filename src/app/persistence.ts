@@ -125,6 +125,19 @@ export async function loadGame(repo: SaveRepository): Promise<{ state: GameState
   return null;
 }
 
+/** Copia os slots existentes para `quarantine-<ts>-<slot>` e os remove. Retorna true se havia algum save. */
+export async function quarantineSaves(repo: SaveRepository, now: number): Promise<boolean> {
+  let found = false;
+  for (const slot of SLOTS) {
+    const env = await repo.load(slot);
+    if (!env) continue;
+    found = true;
+    await repo.save(`quarantine-${now}-${slot}`, env);
+    await repo.remove(slot);
+  }
+  return found;
+}
+
 export async function exportSave(state: GameState, now: number): Promise<string> {
   return btoa(JSON.stringify(await encodeState(state, now)));
 }

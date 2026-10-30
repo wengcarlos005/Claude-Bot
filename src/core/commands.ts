@@ -96,9 +96,17 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       return ok();
     }
     case 'Transfer': {
+      // Valida o lote inteiro antes de aplicar (operação atômica).
+      const uids = [...new Set(cmd.uids)];
+      for (const uid of uids) {
+        const pk = state.pokemon[uid];
+        if (!pk) return fail('Pokémon não encontrado.');
+        if (pk.locked) return fail(`${pk.nickname || speciesOf(ctx.data, pk.species).name} está protegido.`);
+      }
+      if (state.party.every((u) => uids.includes(u))) return fail('A equipe precisa de pelo menos um Pokémon.');
       let money = 0;
       let research = 0;
-      for (const uid of cmd.uids) {
+      for (const uid of uids) {
         const r = transferPokemon(ctx, state, uid);
         if (typeof r === 'string') return fail(r);
         money += r.money;
@@ -129,9 +137,18 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       evolve(ctx, state, pk, evo);
       return ok();
     }
-    case 'SetSettings':
-      state.settings = { ...state.settings, ...cmd.settings };
+    case 'SetSettings': {
+      const s = { ...state.settings, ...cmd.settings };
+      const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo);
+      s.autoPotionThreshold = clamp(s.autoPotionThreshold, 0.05, 0.95);
+      s.autoBuyBudget = clamp(s.autoBuyBudget, 0, 1);
+      s.autoBuyMinStock = Math.floor(clamp(s.autoBuyMinStock, 0, 999));
+      if (!['S', 'A', 'B', 'C', 'D'].includes(s.protectGrade)) s.protectGrade = 'A';
+      const buy = ctx.data.items.get(s.autoBuyItem);
+      if (!buy || buy.category !== 'ball' || buy.price === null) s.autoBuyItem = 'poke-ball';
+      state.settings = s;
       return ok();
+    }
     case 'SetCaptureRules':
       if (cmd.rules.some((r) => !ctx.data.items.get(r.ball) || ctx.data.items.get(r.ball)!.category !== 'ball')) return fail('Bola inválida.');
       state.captureRules = cmd.rules;
@@ -142,7 +159,7 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       return ok();
     }
     case 'LoadPreset': {
-      const p = state.presets[cmd.index];
+      const p = Number.isInteger(cmd.index) && cmd.index >= 0 ? state.presets[cmd.index] : undefined;
       if (!p) return fail('Preset não encontrado.');
       const uids = p.party.filter((u) => state.pokemon[u]);
       if (!uids.length) return fail('Os Pokémon deste preset não existem mais.');
@@ -151,6 +168,7 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       return ok();
     }
     case 'DeletePreset':
+      if (!Number.isInteger(cmd.index) || cmd.index < 0 || cmd.index >= state.presets.length) return fail('Preset não encontrado.');
       state.presets.splice(cmd.index, 1);
       return ok();
     case 'SetPlayerName':

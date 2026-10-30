@@ -12,7 +12,8 @@ import type { GameState } from '../core/state/types';
 import type { Result } from '../core/systems/items';
 import { describeEvent } from './describe';
 import {
-  IndexedDbRepository, LocalStorageRepository, exportSave, importSave, loadGame, saveGame, wipeSaves, type SaveRepository,
+  IndexedDbRepository, LocalStorageRepository, exportSave, importSave, loadGame, quarantineSaves, saveGame, wipeSaves,
+  type SaveRepository,
 } from './persistence';
 
 const STEP_MS = 100;
@@ -74,9 +75,13 @@ export class GameApp {
       loaded = await loadGame(repo);
     }
     const now = Date.now();
+    // Há saves mas nenhum pôde ser lido (corrompido ou de uma versão mais nova): guarda cópias em quarentena
+    // antes de começar um jogo novo, para o autosave não sobrescrevê-los.
+    const quarantined = !loaded && (await quarantineSaves(repo, now));
     const state = loaded?.state ?? createInitialState(data, now, (Math.random() * 2 ** 32) >>> 0);
     const app = new GameApp(data, state, repo);
     if (loaded && loaded.slot !== 'main') app.toast('O save principal estava corrompido; restaurado do backup.', 'bad');
+    if (quarantined) app.toast('Não foi possível ler o save existente (versão incompatível ou corrompido). Ele foi preservado em quarentena e um novo jogo começou.', 'bad');
     return app;
   }
 
@@ -109,7 +114,14 @@ export class GameApp {
 
   private advance(t: number): void {
     if (this.busy) return;
-    const dt = Math.min(t - this.lastFrame, MAX_FRAME_CATCHUP_MS);
+    const raw = t - this.lastFrame;
+    if (raw > MAX_FRAME_CATCHUP_MS) {
+      // Pausa longa sem visibilitychange (notebook suspenso, aba limitada pelo navegador): vira progresso offline,
+      // calculado a partir de lastTickAt (que só avança quando o tempo é de fato simulado).
+      void this.handleAway();
+      return;
+    }
+    const dt = raw;
     this.lastFrame = t;
     this.acc += Math.max(0, dt);
     while (this.acc >= STEP_MS) {
@@ -140,22 +152,28 @@ export class GameApp {
       return;
     }
     this.busy = true;
-    const b = computeBonuses(this.state, this.data);
+    const state = this.state; // fixa o estado: import/reset durante o cálculo não recebe as fatias restantes
+    const b = computeBonuses(state, this.data);
     const capped = away > b.offlineCapMs;
     const target = Math.min(away, b.offlineCapMs) * b.offlineEfficiency;
     const summary = emptySummary();
     this.offlineProgress.value = 0;
-    while (summary.simulatedMs < target) {
-      simulate(this.data, this.state, Math.min(target - summary.simulatedMs, 10 * 60_000), { summary, budgetMs: 40, stepMs: 500, now: () => now });
+    while (summary.simulatedMs < target && this.state === state) {
+      simulate(this.data, state, Math.min(target - summary.simulatedMs, 10 * 60_000), { summary, budgetMs: 40, stepMs: 500, now: () => now });
       this.offlineProgress.value = summary.simulatedMs / target;
       await new Promise((r) => setTimeout(r, 0));
     }
-    this.core.setState(this.state);
-    this.state.stats.offlineMs += away;
-    this.state.meta.lastTickAt = Date.now();
     this.offlineProgress.value = null;
+    if (this.state !== state) {
+      this.busy = false;
+      return;
+    }
+    this.core.setState(state);
+    state.stats.offlineMs += away;
+    state.meta.lastTickAt = Date.now();
     this.offlineReport.value = { awayMs: away, simulatedMs: summary.simulatedMs, efficiency: b.offlineEfficiency, capped, summary };
     this.busy = false;
+    this.lastFrame = performance.now();
     this.frame.value++;
     await this.save(true);
   }
@@ -170,6 +188,9 @@ export class GameApp {
   }
 
   async save(rotate = false): Promise<void> {
+    // Durante o cálculo offline o estado está parcialmente avançado com lastTickAt antigo: salvar agora
+    // faria o próximo carregamento simular de novo o mesmo período.
+    if (this.busy) return;
     try {
       await saveGame(this.repo, this.state, Date.now(), rotate);
     } catch (e) {

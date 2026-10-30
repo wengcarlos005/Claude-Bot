@@ -114,6 +114,14 @@ export function encounterTable(state: GameState, area: ResolvedArea, nowMs: numb
 function startNextEncounter(ctx: GameContext, state: GameState, area: ResolvedArea, bonuses: Bonuses): void {
   const ex = state.exploration;
   if (!activeMember(state)) {
+    if (area.gym || area.league) {
+      // Sem regeneração em desafios: equipe toda desmaiada entre lutas = derrota no desafio.
+      state.stats.battlesLost++;
+      state.hunt.losses++;
+      ctx.emit({ type: 'battleLost', kind: area.league ? 'league' : 'gym' });
+      state.exploration.sequenceIndex = 0;
+      setActiveArea(state, state.world.lastFarmAreaId);
+    }
     goHealing(state, bonuses);
     return;
   }
@@ -129,7 +137,7 @@ function startNextEncounter(ctx: GameContext, state: GameState, area: ResolvedAr
   const pending = area.routeTrainers.filter((t) => !progress.trainersDefeated.includes(t.id));
   const table = encounterTable(state, area, ctx.now());
   if (pending.length && (table.length === 0 || ctx.rng.chance(0.2))) {
-    startTrainerBattle(ctx, state, pending[0], 'trainer', 0, 1, 1, bonuses);
+    startTrainerBattle(ctx, state, pending[0], 'trainer', 0, 1, area.statMult, bonuses);
     return;
   }
   if (!table.length) {
@@ -266,19 +274,19 @@ function stepBattle(ctx: GameContext, state: GameState, area: ResolvedArea, bonu
   if (actor === 'player') {
     if (b.capture) {
       const rule = state.captureRules.find((r) => r.id === b.capture!.ruleId);
-      const ball = resolveBall(ctx, state, b.capture.ball, rule?.fallback ?? true);
+      const ball = rule?.enabled ? resolveBall(ctx, state, rule.ball, rule.fallback) : null;
       if (!ball) b.capture = null;
       else if (shouldThrow(b, ball)) return throwBall(ctx, state, area, bonuses, b, pk.uid, ball);
     }
     const res = attack(ctx, player, b.foe, !!b.capture);
-    pk.hp = player.hp;
+    pk.hp = player.hp * (player.hpScale ?? 1);
     ctx.emit({ type: 'move', side: 'player', moveId: res.moveId, damage: res.damage, effectiveness: res.effectiveness, crit: res.crit, missed: res.missed });
     if (b.foe.hp <= 0) foeFainted(ctx, state, area, bonuses, b, pk.uid);
   } else {
     const res = attack(ctx, b.foe, player);
-    pk.hp = player.hp;
+    pk.hp = player.hp * (player.hpScale ?? 1);
     ctx.emit({ type: 'move', side: 'foe', moveId: res.moveId, damage: res.damage, effectiveness: res.effectiveness, crit: res.crit, missed: res.missed });
-    if (pk.hp <= 0) {
+    if (player.hp <= 0) {
       pk.hp = 0;
       pk.fainted = true;
       b.queue = [];
@@ -307,7 +315,7 @@ function throwBall(ctx: GameContext, state: GameState, area: ResolvedArea, bonus
   const bm = ballMultiplier(ctx, state, ball, b.foe.species, area, cap.throws === 0);
   const chance = captureChance({
     captureRate: sp.captureRate, maxHp: b.foe.maxHp, currentHp: b.foe.hp, ballMult: bm.mult, master: bm.master,
-    playerLevel: pk.level, wildLevel: b.foe.level, alreadyCaught: (state.pokedex[b.foe.species]?.caught ?? 0) > 0,
+    playerLevel: Math.min(pk.level, levelCap(state, ctx.data)), wildLevel: b.foe.level, alreadyCaught: (state.pokedex[b.foe.species]?.caught ?? 0) > 0,
     bonus: bonuses.captureBonus,
   });
   const success = ctx.rng.chance(chance);
@@ -342,7 +350,7 @@ function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, b
   // Captura também conta como vitória (XP e progresso da área, sem dinheiro).
   const xp = awardDefeat(ctx, state, bonuses, b.participants, foe.species, foe.level, false, area.xpMult);
   const active = state.pokemon[uid];
-  if (active) creditWin(state, active);
+  if (active) creditWin(ctx, state, active);
   areaProgress(state, area.id).wins++;
   state.stats.battlesWon++;
   state.hunt.wins++;
@@ -357,7 +365,7 @@ function foeFainted(ctx: GameContext, state: GameState, area: ResolvedArea, bonu
   ctx.emit({ type: 'fainted', side: 'foe', species: b.foe.species });
   const xp = awardDefeat(ctx, state, bonuses, b.participants, b.foe.species, b.foe.level, b.kind !== 'wild', area.xpMult);
   const active = state.pokemon[uid];
-  if (active) creditWin(state, active);
+  if (active) creditWin(ctx, state, active);
   b.queue = [];
   const next = b.foeQueue.shift();
   if (next) {
@@ -440,6 +448,7 @@ function loseBattle(ctx: GameContext, state: GameState, area: ResolvedArea, bonu
     const prev = previousFarmArea(ctx, state, area);
     if (prev) {
       setActiveArea(state, prev);
+      state.world.lastFarmAreaId = prev;
       state.exploration.lossStreak = 0;
       ctx.emit({ type: 'retreat', toAreaId: prev });
     }

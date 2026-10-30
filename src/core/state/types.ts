@@ -46,6 +46,8 @@ export interface Combatant {
   heldItem: string | null;
   /** IVs do selvagem (preservados se ele for capturado). */
   ivs?: Stats;
+  /** Razão PS real / PS em combate (obediência: Pokémon acima do teto luta com PS do nível do teto). */
+  hpScale?: number;
 }
 
 export type BattleKind = 'wild' | 'trainer' | 'gym' | 'league';
