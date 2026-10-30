@@ -25,9 +25,10 @@ Legenda: ✅ concluída · 🔶 em andamento · ⏳ próxima · ○ futura
 | 1.14 | **Mapa com capítulos e 100+ áreas** | ✅ | Kanto 135, Johto 155, Hoenn 103, Sinnoh 153 áreas (andares e zonas reais, Ilhas Sevii, Kanto de HG/SS). Mapa agrupado por capítulo (ginásio), linhas enxutas, cadeado compacto no lugar de "Requer…" | Testes + simulação |
 | 1.15 | **Direção de arte "jogo"** | ✅ | Visual inspirado nas referências: tema azul-marinho, barra superior com avatar e carteira, menu lateral com ícones; Hub como cidade em pixel art com prédios clicáveis; mapa ilustrado com trilha, pinos e painel "Iniciar hunt"; hunt em tela cheia vista de cima com painéis flutuantes e golpes coloridos por tipo; avatar do treinador (cosmético) | E2E + capturas de tela desktop/celular |
 | 1.16 | **Economia de itens de treinador** | 🟡 | Oficina pronta: melhorias de treinador e itens (evolução, seguráveis, vitaminas) fabricados com fragmentos que caem nas hunts + taxa em ₽; a loja do jogo vende só bolas, remédios e buffs. Falta o Mercado de jogadores (precisa de servidor) | Simulação + testes |
-| 1.17 | Polimento visual | ⏳ | Telas secundárias (Loja, Mochila, Pesquisa, Análises, detalhe do Pokémon) no padrão do hub; animação de evolução | Revisão visual com você |
-| 1.18 | Playtest | ⏳ | Você joga a primeira hora e uma troca de região; ajustamos ritmo e clareza | Notas do playtest → calibração |
-| 1.19 | Áudio e acessibilidade | ○ | Música/efeitos opcionais; auditoria Lighthouse ≥ 90 | Lighthouse |
+| 1.17 | **Golpes e hunt inteligente** | ✅ | Até 10 golpes conhecidos, 2/4/6 equipados conforme o nível, troca a qualquer momento (ou automático); na hunt, selvagens nascem no mapa inteiro e o líder varre os setores menos visitados | Testes + simulação + capturas de tela |
+| 1.18 | **Visual de GBA e polimento** | ✅ | Molduras de pixel, ícones do PokéSprite, mapa em trilha com tiles do FireRed, Hub sem sobreposição, Mochila com bolsos e Loja em cartões, animação de evolução | E2E + capturas de tela desktop/celular |
+| 1.19 | Playtest | ⏳ | Você joga a primeira hora e uma troca de região; ajustamos ritmo e clareza | Notas do playtest → calibração |
+| 1.20 | Áudio e acessibilidade | ○ | Música/efeitos opcionais; auditoria Lighthouse ≥ 90 | Lighthouse |
 
 ## Fase 2 — Conta e servidor
 | # | Etapa | Status | O que entrega |
@@ -64,7 +65,7 @@ Legenda: ✅ concluída · 🔶 em andamento · ⏳ próxima · ○ futura
 | Hunt Analyzer e Auto Manager | ✅ |
 | Economia com NPC | ✅ |
 | Interface responsiva | ✅ Design System aplicado |
-| Testes e logs | ✅ 36 testes, E2E, CI |
+| Testes e logs | ✅ 41 testes, E2E, CI |
 
 ## Riscos
 | Risco | Mitigação |

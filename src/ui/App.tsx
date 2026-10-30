@@ -18,6 +18,7 @@ import { AutoManagerScreen } from './screens/AutoManager';
 import { StatsScreen } from './screens/Stats';
 import { SettingsScreen } from './screens/Settings';
 import { OfflineModal, OfflineProgress, StarterPicker } from './screens/Modals';
+import { EvolutionScene } from './screens/Evolution';
 
 type Icon = { item: string } | { ui: string } | { pixel: keyof typeof PIXEL_ICONS };
 const SCREENS: { id: string; label: string; icon: Icon; C: (p: ScreenProps) => preact.JSX.Element | null }[] = [
@@ -92,6 +93,7 @@ export function App({ app }: { app: GameApp }) {
       {!s.player.starterChosen && <StarterPicker />}
       {app.offlineProgress.value !== null && <OfflineProgress value={app.offlineProgress.value} />}
       {app.offlineReport.value && <OfflineModal />}
+      {!app.offlineReport.value && app.offlineProgress.value === null && <EvolutionScene />}
       <div class="app-toasts" aria-live="polite">
         {app.toasts.value.map((t) => (
           <div key={t.id} class={`pk-toast pk-toast--${t.tone === 'great' ? 'great' : t.tone === 'bad' ? 'bad' : t.tone === 'good' ? 'good' : 'info'}`} role="status">
