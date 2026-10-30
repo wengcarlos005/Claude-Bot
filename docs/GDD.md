@@ -267,6 +267,9 @@ Everstone impede a evolução. Variantes regionais ficam para uma etapa futura.
 | Insígnia 8 | ~6,5 h |
 | Campeão de Kanto | ~8,5–12 h |
 
+Depois de Kanto (simulado): Johto até ~16 h, Hoenn até 29–41 h, as 8 insígnias de Sinnoh até 40–52 h, e a Liga de
+Sinnoh como meta de longo prazo.
+
 Na prática: com 2 h ativas por dia e 8 h offline a 50%, Kanto leva cerca de 2 dias de calendário, e cada região seguinte
 é mais longa. Detalhes e premissas em [ECONOMY.md](./ECONOMY.md).
 

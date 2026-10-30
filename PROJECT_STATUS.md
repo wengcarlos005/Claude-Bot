@@ -61,11 +61,11 @@ _Última atualização: 30/10/2026 (sessão noturna de desenvolvimento)._
 | `npm run e2e` (Playwright) | ✓ Inicial → batalhas → as 11 telas → Hunt Analyzer → salvar/recarregar → 2 h offline com relatório → celular sem rolagem horizontal, 0 erros no console |
 | `npm run build` | OK. JS inicial ~60 kB gzip; dados ~150 kB gzip em chunks |
 | Playwright (manual) | Escolher inicial → batalhas/capturas com sprites animados → todas as telas → Hunt Analyzer → layout de celular → salvar/recarregar → **2 h offline com relatório**. 0 erros no console |
-| Simulador | Kanto: Campeão em 8,3–11,7 h simuladas (3–4 sementes) |
+| Simulador | Kanto: Campeão em 8,3–11,7 h (3–4 sementes). Com 120 h: Johto 15,5–16,5 h, Hoenn 29–41 h, 8 insígnias de Sinnoh 40–52 h |
 
 ## 🔶 Em andamento
-- **Balanceamento pós-Kanto** (Hoenn/Sinnoh): Tier crescente e parâmetros por região recém-calibrados. Resultados da
-  última rodada em `docs/ECONOMY.md` §8.
+- **Balanceamento pós-Kanto:** Johto ~16 h, Hoenn 29–41 h, 8 insígnias de Sinnoh 40–52 h; a Liga de Sinnoh é a parede
+  de fim de jogo (ver `docs/ECONOMY.md` §8). Precisa de playtest humano para confirmar.
 
 ## ⏳ Pendente (próximas etapas — ver docs/ROADMAP.md)
 1. Polimento: áudio, auditoria de acessibilidade/Lighthouse, ícones dedicados por geração.

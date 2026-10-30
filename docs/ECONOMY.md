@@ -147,6 +147,9 @@ Cada linha é uma rodada do simulador → problema → mudança.
 | 13 | Hoenn/Sinnoh em ~5 h cada | Níveis 85–100 / 90–100; Tier crescente por área; XP e vitórias por região |
 | 14 | Parede na Liga de Hoenn (8 insígnias em 24 h, Liga em 317 h) | Tier final de Hoenn 1,7 → 1,45; Sinnoh 1,7–2,4 → 1,5–2,0; bot faz farm de Afinidade no pós-jogo |
 | 15 | 10 derrotas na 1ª hora (inicial Nv 5 com 20 PS) | Inicial Nv 6 e 10 Poções iniciais → 2 derrotas |
+| 16 | Revisão de código: obediência não limitava PS; treinadores ignoravam o Tier no 1º Pokémon | Corrigido (ver PROJECT_STATUS) |
+| 17 | 40 mil PP em 120 h com farm de Afinidade (+1 PP por duplicata) | Duplicatas comuns rendem só ₽; PP só para raros, lendários e shinies → ~500 PP em 120 h |
+| 18 | Metade dos shinies perdidos (34/71) após 3–6 arremessos | Shiny: até 30 tentativas → 35/37 e 33/40 |
 
 ## 7. Pontos em aberto
 - Validar Johto, Hoenn e Sinnoh com jogadores reais: o bot não troca a equipe por tipo contra cada ginásio, e um jogador
@@ -155,5 +158,21 @@ Cada linha é uma rodada do simulador → problema → mudança.
   decrescentes se a renda de PP ficar alta demais.
 - Considerar metas de calendário mais longas por região quando o ranking existir (temporadas).
 
-## 8. Última rodada (seed 1, 200 h simuladas)
-Ver o resultado no fim deste documento, atualizado a cada calibração.
+## 8. Última rodada (120 h simuladas, 2 sementes)
+
+| Marco | Seed 1 | Seed 2 |
+|---|---|---|
+| Campeão de Kanto | 9,3 h | 8,5 h |
+| Campeão de Johto | 16,5 h | 15,5 h |
+| Campeão de Hoenn | 29,1 h | 40,6 h |
+| 1ª insígnia de Sinnoh | 31,9 h | 43,4 h |
+| 8ª insígnia de Sinnoh | 40,3 h | 52,0 h |
+| Campeão de Sinnoh | não em 120 h | não em 120 h |
+| Espécies na Pokédex (120 h) | 330 | 323 |
+| Shinies capturados / encontrados | 35 / 37 | 33 / 40 |
+| PP ao fim | ~450 | ~530 |
+
+**Leitura.** A Liga de Sinnoh (Tier ×1,94) é hoje a parede de fim de jogo. O bot gasta todo o ₽ em bolas e na Academia e
+não troca a equipe por tipo, então um jogador real deve passar antes. Em calendário (~6 h efetivas/dia): Kanto em ~1,5
+dia, Johto no 3º dia, Hoenn em 5–7 dias, Sinnoh em 1–2+ semanas, e a coleção completa leva semanas. Próxima calibração
+sugerida, depois de playtest: avaliar o Tier final de Sinnoh (1,9 → 1,75) caso jogadores reais também travem.
