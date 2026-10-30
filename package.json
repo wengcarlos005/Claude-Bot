@@ -1,0 +1,33 @@
+{
+  "name": "pokemon-idle",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:data": "tsx scripts/build-data/index.ts",
+    "sprites:download": "tsx scripts/download-sprites.ts",
+    "sim": "tsx scripts/sim/index.ts",
+    "e2e": "node scripts/e2e-smoke.mjs"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.11.4",
+    "idb-keyval": "^6.3.0",
+    "preact": "^11.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5",
+    "zod": "^4.6.7"
+  }
+}
