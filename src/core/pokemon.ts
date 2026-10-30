@@ -77,12 +77,18 @@ export function maxHpOf(state: GameState, data: GameData, pk: OwnedPokemon): num
   return pokemonStats(state, data, pk).hp;
 }
 
-export function toCombatant(state: GameState, data: GameData, pk: OwnedPokemon, globalStatMult?: number): Combatant {
+/**
+ * Combatente do jogador. Obediência: acima do teto de nível, o Pokémon luta como se estivesse no teto
+ * (impede que capturas de nível alto, como pesca com Super Vara, quebrem a progressão).
+ */
+export function toCombatant(state: GameState, data: GameData, pk: OwnedPokemon, globalStatMult?: number, cap = 100): Combatant {
   const sp = speciesOf(data, pk.species);
-  const stats = pokemonStats(state, data, pk, globalStatMult);
+  const level = Math.min(pk.level, cap);
+  const full = pokemonStats(state, data, pk, globalStatMult);
+  const stats = level === pk.level ? full : calcStats(sp.baseStats, pk.ivs, pk.evs, level, pk.nature, statBonusMult(state, data, pk, globalStatMult));
   return {
-    uid: pk.uid, species: pk.species, level: pk.level, stats, types: sp.types, moves: movesFor(data, pk.species, pk.level),
-    hp: Math.min(pk.hp, stats.hp), maxHp: stats.hp, shiny: pk.shiny, heldItem: pk.heldItem,
+    uid: pk.uid, species: pk.species, level, stats, types: sp.types, moves: movesFor(data, pk.species, level),
+    hp: Math.min(pk.hp, full.hp), maxHp: full.hp, shiny: pk.shiny, heldItem: pk.heldItem,
   };
 }
 

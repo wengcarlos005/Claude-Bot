@@ -47,7 +47,7 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       if (state.player.starterChosen) return fail('Inicial já escolhido.');
       const region = ctx.data.regions[0];
       if (!region.starters?.includes(cmd.species)) return fail('Inicial inválido.');
-      const pk = createPokemon(ctx, state, cmd.species, 5, { origin: 'starter', area: region.areas[0].id });
+      const pk = createPokemon(ctx, state, cmd.species, 6, { origin: 'starter', area: region.areas[0].id });
       addPokemon(state, pk);
       registerCaught(ctx, state, cmd.species, false);
       gainAffinity(ctx, state, cmd.species, false);

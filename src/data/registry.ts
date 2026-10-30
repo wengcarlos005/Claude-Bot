@@ -24,6 +24,8 @@ export interface ResolvedArea extends AreaDef {
   routeTrainers: TrainerDef[];
   levelRange: [number, number];
   statMult: number;
+  xpMult: number;
+  winsMult: number;
 }
 
 export interface GameData {
@@ -161,7 +163,10 @@ export function createGameData(raw: RawData): GameData {
   const areas = new Map<string, ResolvedArea>();
   for (const region of REGIONS) {
     const enc = raw.encounters[region.id] ?? {};
-    for (const area of region.areas) {
+    const n = region.areas.length;
+    for (const [idx, area] of region.areas.entries()) {
+      const t0 = region.statMult ?? 1;
+      const t1 = region.statMultEnd ?? t0;
       if (areas.has(area.id)) throw new Error(`Área duplicada: ${area.id}`);
       const slots = mergeSlots(region, area, enc);
       // Faixa exibida: encontros a pé quando existem (pesca/surf têm níveis bem diferentes).
@@ -177,7 +182,9 @@ export function createGameData(raw: RawData): GameData {
         slots,
         routeTrainers: buildRouteTrainers(region, area, slots),
         levelRange: all.length ? [Math.min(...all), Math.max(...all)] : [1, 1],
-        statMult: region.statMult ?? 1,
+        statMult: n > 1 ? t0 + ((t1 - t0) * idx) / (n - 1) : t0,
+        xpMult: region.xpMult ?? 1,
+        winsMult: region.winsMult ?? 1,
       });
     }
   }

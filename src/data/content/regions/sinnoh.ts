@@ -15,9 +15,12 @@ export const SINNOH: RegionDef = {
   unlock: [{ type: 'championOf', regionId: 'hoenn' }],
   levelCaps: [100, 100, 100, 100, 100, 100, 100, 100, 100],
   championCap: 100,
-  levelOffset: 70,
-  levelScale: 0.5,
-  statMult: 1.6,
+  levelOffset: 90,
+  statMultEnd: 2.0,
+  xpMult: 0.4,
+  winsMult: 2.5,
+  levelScale: 0.2,
+  statMult: 1.5,
   starters: ['turtwig', 'chimchar', 'piplup'],
   areas: [
     {

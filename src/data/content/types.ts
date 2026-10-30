@@ -132,8 +132,14 @@ export interface RegionDef {
   /** Transformação dos níveis originais dos dados: nível = offset + base * scale. */
   levelOffset: number;
   levelScale: number;
-  /** Multiplicador de atributos de selvagens e treinadores (Tier de Região). */
+  /** Multiplicador de atributos de selvagens e treinadores (Tier de Região) na primeira área. */
   statMult?: number;
+  /** Tier na última área da região (cresce linearmente pela ordem das áreas). */
+  statMultEnd?: number;
+  /** Multiplicador de XP ganha na região (ritmo). */
+  xpMult?: number;
+  /** Multiplicador das vitórias exigidas para concluir áreas na região (ritmo). */
+  winsMult?: number;
   starters?: string[];
   areas: AreaDef[];
 }

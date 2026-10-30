@@ -1,21 +1,59 @@
-# Pokémon Idle — Roadmap por Etapas
+# Pokémon Idle — Roadmap, MVP e Riscos
 
-Cada etapa termina com algo **jogável ou verificável**, testes passando e uma revisão antes de seguir para a próxima.
-Os critérios de aceite estão listados em cada etapa.
+As fases do plano mestre foram combinadas com as etapas técnicas. Cada etapa só é marcada como concluída com testes
+passando e o comportamento verificado. Status detalhado em [PROJECT_STATUS.md](../PROJECT_STATUS.md).
 
-| Etapa | Nome | Entrega | Critério de aceite |
+## 1. Etapas
+
+| # | Etapa | Status | Critério de aceite |
 |---|---|---|---|
-| **0** | Fundação | Projeto Vite + TS + Preact, lint, Vitest, estrutura de pastas, pipeline de dados (Kanto/Gen 1), `AssetRegistry` com fallback | `npm run dev` abre o app; `npm run build:data` gera 151 espécies validadas; testes de integridade passam |
-| **1** | Núcleo do motor | RNG semeado, EventBus, GameLoop de passo fixo, `GameState` inicial, fórmulas (atributos, XP, dano, tipos, captura) | Fórmulas cobertas por testes; tela de debug mostra o inicial com atributos corretos |
-| **2** | Primeiro jogável | Exploração (Rotas 1, 22, 2, Floresta de Viridian), batalha automática contra selvagens, captura com Poké Ball, Pokédex básica, tela Explorar | Escolher inicial → farmar → capturar → ver na Pokédex, só na sessão ativa |
-| **3** | Persistência e offline | `SaveRepository` (IndexedDB), autosave, backups, export/import, migrações, simulação offline + Relatório de Retorno | Fechar e reabrir mantém tudo; 8 h fora geram progresso plausível; teste de 24 h < 200 ms |
-| **4** | Itens e economia | Inventário, loja, Poções + cura automática, Centro Pokémon, tipos de bola, regras de captura, drops | Ciclo ganhar ₽ → comprar bolas → capturar fechado; regras de captura configuráveis |
-| **5** | Evolução | Avaliador de condições (nível, pedra, Cabo de Ligação, amizade, horário, local, atributo, aleatório) + UI de uso de item | Todas as evoluções da Gen 1 funcionam; testes por tipo de condição |
-| **6** | Kanto completa | Todas as áreas, treinadores, 8 ginásios, insígnias e teto de nível, Elite Four, lendários, Zona Safari | É possível zerar Kanto; o simulador bate as metas de ritmo do GDD ±30% |
-| **7** | Profundidade de farm | Melhorias (₽/PP), Afinidade, transferências, PC com caixas/filtros, ₽/h e XP/h por rota, boosts, shinies | Decisões de otimização visíveis; PC fluido com 2.000 Pokémon |
-| **8** | Novas regiões | Johto → Hoenn → Sinnoh (dados por geração sob demanda), desbloqueio por Campeão, pesquisa da Pokédex Nacional | Transição de região sem recarregar; dados de outras gerações não pesam no bundle inicial |
-| **9** | Nuvem e ranking | Firebase Auth (anônimo → Google), cloud save local-first, resolução de conflito, leaderboards com Cloud Function | Mesmo save em 2 dispositivos; ranking por temporada |
-| **10** | Polimento | PWA instalável, áudio, conquistas, acessibilidade, tutorial, balanceamento final | Lighthouse ≥ 90; tutorial guia a primeira meia hora |
+| 0 | Fundação: Vite/TS/Preact, pipeline de dados, assets com fallback | ✅ | `npm run build:data` gera 1025 espécies validadas; `npm run dev` abre o jogo |
+| 1 | Núcleo: RNG, estado, fórmulas (XP, atributos, dano, tipos, captura) | ✅ | Testes com valores oficiais/de referência |
+| 2 | Hunts, batalha automática, captura, Pokédex | ✅ | Escolher inicial → farmar → capturar → registrar na Pokédex |
+| 3 | Persistência e progresso offline | ✅ | Save/backup/migração/export testados; offline com o motor real e relatório |
+| 4 | Itens, loja, economia, Auto Manager (captura, cura, transferência, compra) | ✅ | Ciclo ₽ → bolas → capturas fechado; regras configuráveis |
+| 5 | Evoluções (todas as condições) | ✅ | Testes por tipo de condição |
+| 6 | Kanto completa (45 áreas, 8 ginásios, Liga, lendários) | ✅ | Bot vira Campeão em 8,5–12 h simuladas em várias sementes |
+| 7 | Profundidade: Afinidade, Maestria, Pesquisa, Academia, PC, presets, Hunt Analyzer | ✅ | Telas funcionais com dados reais |
+| 8 | Johto, Hoenn, Sinnoh | ✅ conteúdo / 🔶 balanceamento | Regiões jogáveis; ritmo em calibração ([ECONOMY.md](./ECONOMY.md)) |
+| 9 | Polimento: PWA, áudio, tutorial, conquistas, acessibilidade | ⏳ | Lighthouse ≥ 90; tutorial dos primeiros 30 min |
+| 10 | Backend autoritativo: Fastify + Postgres rodando o core, contas, cloud save | ⏳ | Mesmo save em 2 dispositivos; servidor recusa comando inválido |
+| 11 | Ranking por temporada (servidor) | ⏳ | Pontuação calculada no servidor; sem envio do cliente |
+| 12 | Economia entre jogadores: mercado com escrow, taxas e histórico | ⏳ | Nenhuma duplicação em testes de concorrência |
+| 13 | Social: guildas, chat, raids, PvP 1x1/3x3/6x6 | ⏳ | Moderação e denúncia antes de abrir |
+| 14 | Endgame: eventos sazonais, temporadas, breeding, status de batalha e habilidades | ⏳ | — |
 
-Itens do GDD §12 (status de batalha, criação/ovos, Torre de Batalha, eventos, prestígio) entram depois da Etapa 10,
-priorizados de acordo com o que o jogo pedir.
+## 2. MVP (definição do plano mestre × estado atual)
+
+| Item do MVP | Situação |
+|---|---|
+| Autenticação e salvamento de conta | 🔶 Salvamento local robusto (backups e export). A conta na nuvem depende da etapa 10 |
+| Pokédex e catálogo de espécies | ✅ 1025 espécies; Pokédex regionais e Nacional |
+| Uma região com várias rotas | ✅ Kanto completa, mais Johto, Hoenn e Sinnoh |
+| Hunts automáticas | ✅ Online e offline |
+| Encontros e combate | ✅ |
+| Captura e inventário | ✅ |
+| IVs, natureza, shiny | ✅ Mais a nota de qualidade S–D |
+| Níveis e evoluções | ✅ |
+| Equipes e presets | ✅ |
+| Hunt Analyzer inicial | ✅ Por área e comparativo |
+| Auto Manager básico | ✅ Captura, cura, revive, recuo, transferência, comprador |
+| Economia básica com NPC | ✅ Loja, melhorias, transferências |
+| Interface responsiva | ✅ Desktop e celular |
+| Testes automatizados e logs | ✅ 27 testes + CI + log de eventos no jogo |
+
+"Sem dados falsos e sem botões decorativos": todas as telas operam sobre o estado real; não há botões de placeholder.
+
+## 3. Riscos
+
+| Risco | Tipo | Impacto | Mitigação |
+|---|---|---|---|
+| Uso de marcas e sprites da The Pokémon Company | PI | **Alto** (takedown) | Não monetizar; aviso de fã; nada de sprite no repositório; pacote de assets e nomes desacoplados, trocáveis por criaturas originais antes de qualquer publicação ampla |
+| Lógica no cliente permite trapaça | Técnico | Médio agora, alto com ranking/mercado | Core determinístico e isomórfico, pronto para o servidor autoritativo (etapa 10) antes de qualquer recurso competitivo |
+| Progresso rápido ou lento demais | Balanceamento | Alto (retenção) | Simulador com bot e várias sementes; constantes centralizadas (XP_RATE, WINS_TO_CLEAR_MULT, Tier por região); CI roda a simulação |
+| Inflação de ₽ no fim do jogo | Economia | Médio | Revanche da Liga reduzida, selvagens pagam pouco, Academia como sumidouro infinito; monitorar no simulador |
+| Save corrompido ou perdido | Técnico | Alto | Checksum, 2 backups, export; migrações versionadas e testadas |
+| Mudanças nos dados da PokéAPI | Técnico | Baixo | JSON gerado versionado; pipeline com cache e validação |
+| Performance com PCs enormes | Técnico | Médio | Renderização limitada a 600 células com filtros; serializer compacto se necessário |
+| Disponibilidade do CDN de sprites | Técnico | Baixo | Fallback estático; opção de sprites locais (`sprites:download`) |
+| Uma espécie dominar | Balanceamento | Médio | Maestria limitada (+10%), Tier e tipos variados nos ginásios; o Hunt Analyzer expõe alternativas |

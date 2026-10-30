@@ -36,14 +36,14 @@ export function giveExp(ctx: GameContext, state: GameState, pk: OwnedPokemon, am
  */
 export function awardDefeat(
   ctx: GameContext, state: GameState, bonuses: Bonuses, participants: string[], foeSpecies: string, foeLevel: number,
-  isTrainer: boolean,
+  isTrainer: boolean, areaXpMult = 1,
 ): number {
   const foe = speciesOf(ctx.data, foeSpecies);
   let total = 0;
   for (const pk of partyMembers(state)) {
     if (pk.fainted) continue;
     const participant = participants.includes(pk.uid);
-    let amount = battleExp(foe.baseExp, foeLevel, isTrainer, pk.level) * bonuses.xpMult * (participant ? 1 : bonuses.expShare);
+    let amount = battleExp(foe.baseExp, foeLevel, isTrainer, pk.level) * bonuses.xpMult * areaXpMult * (participant ? 1 : bonuses.expShare);
     if (pk.heldItem === 'lucky-egg') amount *= 1.5;
     amount *= 1 + masteryLevel(state, pk.species) * MASTERY_XP_BONUS;
     if (participant) addEvs(pk.evs, foe.evYield as Partial<Stats>);

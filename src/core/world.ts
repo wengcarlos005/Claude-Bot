@@ -80,7 +80,7 @@ export function winsToClear(area: ResolvedArea): number {
   const walkable = area.slots.some((s) => s.method === 'walk' || s.method === 'headbutt' || s.method === 'rock-smash');
   const surfable = area.slots.some((s) => s.method === 'surf') && area.unlock.some((r) => r.type === 'keyItem' && r.itemId === 'hm-surf');
   if (!walkable && !surfable) return 0;
-  return (area.winsToClear ?? 10) * WINS_TO_CLEAR_MULT;
+  return Math.round((area.winsToClear ?? 10) * WINS_TO_CLEAR_MULT * area.winsMult);
 }
 
 export function isFarmArea(area: ResolvedArea): boolean {

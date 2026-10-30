@@ -39,6 +39,7 @@ export function PartyScreen(_: ScreenProps) {
                   <Bar value={pk.level >= cap ? 1 : pk.xp - x0} max={pk.level >= cap ? 1 : x1 - x0} kind="xp" />
                   <div class="small muted">{movesFor(app.data, pk.species, pk.level).map((m) => app.data.moves.get(m)?.name).join(' · ')}</div>
                   {pk.heldItem && <div class="small">Segurando: {app.data.items.get(pk.heldItem)?.name}</div>}
+                  {pk.level > cap && <div class="small bad">Acima do teto: luta como Nv {cap} até a próxima insígnia.</div>}
                 </div>
               </div>
             );

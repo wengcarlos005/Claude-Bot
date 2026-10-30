@@ -3,7 +3,7 @@
 import type { GameCore } from './game';
 import { upgradeCost } from './commands';
 import { activeMember, maxHpOf, partyMembers, pokemonStats } from './pokemon';
-import { areaUnlocked, checkRequirement, isFarmArea } from './world';
+import { areaUnlocked, checkRequirement, isFarmArea, levelCap } from './world';
 import { availableEvolutions } from './systems/evolution';
 import { shopAvailable } from './systems/items';
 import { ivTotal } from './formulas/stats';
@@ -66,6 +66,17 @@ export function botDecide(core: GameCore): void {
     if (!pick) break;
     core.dispatch({ type: 'BuyUpgrade', upgradeId: pick.id });
   }
+  // Pós-Campeão: farm de Afinidade (captura tudo e transfere duplicatas), como um jogador de fim de jogo faria.
+  if (state.player.champions.length > 0) {
+    const any = state.captureRules.find((r) => r.when === 'any');
+    if (any && (!any.enabled || any.ball !== ball)) {
+      any.enabled = true;
+      any.ball = ball;
+      any.fallback = true;
+      state.settings.autoTransfer = true;
+    }
+    if ((state.inventory[ball] ?? 0) < 60 && state.player.money > price * 200) core.dispatch({ type: 'BuyItem', itemId: ball, qty: 60 });
+  }
   if (state.upgrades['auto-buyer'] && !state.settings.autoBuy) core.dispatch({ type: 'SetSettings', settings: { autoBuy: true, autoBuyItem: ball } });
 
   // Navegação: se a área atual está concluída, tenta ginásio/liga quando a equipe parece pronta; senão a área liberada mais avançada.
@@ -76,7 +87,10 @@ export function botDecide(core: GameCore): void {
   const avgTop3 = team.slice(0, 3).reduce((a, p) => a + p.level, 0) / Math.max(1, Math.min(3, team.length));
   const unlocked = data.regions.flatMap((r) => r.areas).map((a) => data.areas.get(a.id)!).filter((a) => areaUnlocked(state, data, a));
   const challenge = unlocked.find(
-    (a) => !isFarmArea(a) && !(a.league && state.player.champions.includes(a.regionId)) && avgTop3 >= a.levelRange[1] + (a.league ? 2 : 0),
+    (a) =>
+      !isFarmArea(a) &&
+      !(a.league && state.player.champions.includes(a.regionId)) &&
+      avgTop3 >= Math.min(levelCap(state, data), a.levelRange[1] + (a.league ? 2 : 0)),
   );
   if (challenge && (state.exploration.lossStreak === 0 || Math.random() < 0.3)) {
     core.dispatch({ type: 'SelectArea', areaId: challenge.id });

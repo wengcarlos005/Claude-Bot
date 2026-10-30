@@ -17,6 +17,8 @@ GameApp.boot()
   .then((app) => {
     render(<App app={app} />, root);
     app.start();
+    // Acesso para depuração pelo console do navegador (ex.: pokemonIdle.state).
+    (window as unknown as { pokemonIdle: GameApp }).pokemonIdle = app;
   })
   .catch((e) => {
     console.error(e);

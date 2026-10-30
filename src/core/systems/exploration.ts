@@ -9,7 +9,7 @@ import { captureChance } from '../formulas/capture';
 import { ivTotal } from '../formulas/stats';
 import { activeMember, addPokemon, createPokemon, hasRoom, maxHpOf, partyMembers, speciesOf, toCombatant, wildCombatant } from '../pokemon';
 import type { BattleKind, BattleState, CaptureRule, Combatant, GameState } from '../state/types';
-import { addItem, announceUnlocks, areaProgress, checkAreaCleared, isFarmArea, timeOfDay, unlockedAreaIds, areaUnlocked } from '../world';
+import { addItem, announceUnlocks, areaProgress, areaUnlocked, checkAreaCleared, isFarmArea, levelCap, timeOfDay, unlockedAreaIds } from '../world';
 import { attack, roundOrder } from './battle';
 import { bestIvTotal, gainAffinity, registerCaught, registerSeen, shouldAutoTransfer, transferPokemon } from './collection';
 import { autoBuy, autoHeal, ballMultiplier } from './items';
@@ -254,7 +254,7 @@ function stepBattle(ctx: GameContext, state: GameState, area: ResolvedArea, bonu
     loseBattle(ctx, state, area, bonuses, b);
     return bonuses.actionMs;
   }
-  const player = toCombatant(state, ctx.data, pk, bonuses.statMult);
+  const player = toCombatant(state, ctx.data, pk, bonuses.statMult, levelCap(state, ctx.data));
   if (!b.participants.includes(pk.uid)) b.participants.push(pk.uid);
   if (!b.queue.length) {
     b.queue = roundOrder(ctx, player, b.foe);
@@ -339,7 +339,7 @@ function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, b
   if (shouldAutoTransfer(state, pk, ownedBefore, room)) transferred = typeof transferPokemon(ctx, state, pk.uid) !== 'string';
   ctx.emit({ type: 'captured', uid: pk.uid, species: foe.species, shiny: foe.shiny, newSpecies: isNew, transferred });
   // Captura também conta como vitória (XP e progresso da área, sem dinheiro).
-  const xp = awardDefeat(ctx, state, bonuses, b.participants, foe.species, foe.level, false);
+  const xp = awardDefeat(ctx, state, bonuses, b.participants, foe.species, foe.level, false, area.xpMult);
   const active = state.pokemon[uid];
   if (active) creditWin(state, active);
   areaProgress(state, area.id).wins++;
@@ -353,7 +353,7 @@ function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, b
 
 function foeFainted(ctx: GameContext, state: GameState, area: ResolvedArea, bonuses: Bonuses, b: BattleState, uid: string): void {
   ctx.emit({ type: 'fainted', side: 'foe', species: b.foe.species });
-  const xp = awardDefeat(ctx, state, bonuses, b.participants, b.foe.species, b.foe.level, b.kind !== 'wild');
+  const xp = awardDefeat(ctx, state, bonuses, b.participants, b.foe.species, b.foe.level, b.kind !== 'wild', area.xpMult);
   const active = state.pokemon[uid];
   if (active) creditWin(state, active);
   b.queue = [];

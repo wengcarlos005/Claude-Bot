@@ -15,7 +15,7 @@ export function createInitialState(data: GameData, now: number, seed: number): G
     pokedex: {},
     affinity: {},
     mastery: {},
-    inventory: { 'poke-ball': 10, potion: 5 },
+    inventory: { 'poke-ball': 10, potion: 10 },
     upgrades: {},
     milestonesClaimed: [],
     world: { activeAreaId: firstArea, lastFarmAreaId: firstArea, areas: {} },
