@@ -2,7 +2,11 @@
 .env.local
 *.log
 node_modules/
+dist/
+.cache/
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+# Sprites baixados localmente (npm run sprites:download) não vão para o repositório
+public/assets/sprites/pokemon/
