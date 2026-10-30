@@ -1,6 +1,10 @@
 // Registro de assets: resolve URLs de sprites a partir de um "pacote" configurável.
 // Padrão: repositório público de sprites do PokeAPI (todas as 1025 espécies até a Gen 9). Para usar sprites
 // locais, rode `npm run sprites:download` e defina VITE_SPRITE_BASE=/assets/sprites no .env.
+import ITEM_ICONS from '../data/generated/itemicons.json';
+import ICON_NAMES_RAW from '../data/generated/pokeicons.json';
+
+const ICON_NAMES = ICON_NAMES_RAW as Record<number, string>;
 const BASE: string = import.meta.env.VITE_SPRITE_BASE || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites';
 const ANIMATED_MAX_ID = 649; // sprites animados da Gen 5 cobrem até Genesect
 
@@ -20,8 +24,25 @@ export function staticFallback(id: number, view: SpriteView = 'front', shiny = f
   return pokemonSprite(id, { view, shiny, animated: false });
 }
 
+/** Ícones com contorno do PokéSprite (estilo dos menus dos jogos); `npm run build:itemicons` gera a tabela. */
+const POKESPRITE = 'https://cdn.jsdelivr.net/gh/msikma/pokesprite@master';
+export function uiIcon(path: string): string {
+  return `${POKESPRITE}/items-outline/${path}.png`;
+}
+
+/** Ícone do item: PokéSprite quando existe, senão o sprite da PokéAPI. */
 export function itemSprite(itemId: string, override?: string): string {
+  const icon = !override && (ITEM_ICONS as Record<string, string>)[itemId];
+  return icon ? uiIcon(icon) : legacyItemSprite(itemId, override);
+}
+
+export function legacyItemSprite(itemId: string, override?: string): string {
   return `${BASE}/items/${override ?? itemId}.png`;
+}
+
+/** Ícone de Pokémon (caixa do PC, 68×56) do PokéSprite. */
+export function pokemonIcon(dexId: number, shiny = false): string {
+  return `${POKESPRITE}/pokemon-gen8/${shiny ? 'shiny' : 'regular'}/${ICON_NAMES[dexId] ?? 'unknown'}.png`;
 }
 
 /** Sprite de treinador (avatar). */

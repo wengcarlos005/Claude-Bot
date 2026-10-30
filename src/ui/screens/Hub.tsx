@@ -19,6 +19,8 @@ const PAD = 5;
 
 interface Spot {
   id: string;
+  /** Placa alinhada à direita do prédio (prédio na borda do mapa). */
+  end?: boolean;
   /** Retângulo do prédio em blocos de 16 px do mapa original. */
   x: number;
   y: number;
@@ -40,7 +42,7 @@ const SPOTS: Spot[] = [
   { id: 'arena', x: 27, y: 4.6, w: 7, h: 7.4, title: 'Arena PvP', sub: 'Batalhe contra jogadores', icon: 'vs-seeker', soon: true },
   { id: 'market', x: 31, y: 17.4, w: 7, h: 4.6, title: 'Mercado Global', sub: 'Negocie com treinadores', icon: 'nugget', soon: true },
   { id: 'guild', x: 24, y: 16, w: 6, h: 3.2, title: 'Guilda', sub: 'Evolua em grupo', icon: 'comet-shard', soon: true },
-  { id: 'hunt', x: 54, y: 12.4, w: 6, h: 4, title: 'Áreas de Caça', sub: 'Saída para as rotas', icon: 'town-map', go: 'map' },
+  { id: 'hunt', x: 54, y: 12.4, w: 6, h: 4, title: 'Áreas de Caça', sub: 'Saída para as rotas', icon: 'town-map', go: 'map', end: true },
 ];
 /** Praça da fonte, onde a equipe passeia. */
 const PLAZA = { x0: 9, y0: 17, x1: 18, y1: 24 };
@@ -98,20 +100,34 @@ function City({ map, onOpen }: { map: RenderedMap; onOpen: (b: Spot) => void }) 
   const overRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
   const bump = () => setTick((t) => t + 1);
-  const cw = box.current?.clientWidth ?? 1200;
-  const ch = box.current?.clientHeight ?? 800;
-  // Escala "cobrir" com um leve zoom: a cidade ocupa a área toda e dá para arrastar para explorar.
-  const sc = Math.max(cw < 700 ? 1.6 : 1.25, Math.max(cw / (map.w * 16), ch / (map.h * 16)) * 1.08);
+  const cw = box.current?.clientWidth ?? 1000;
+  const ch = box.current?.clientHeight ?? 600;
+  // Enquadra a cidade inteira (com todos os prédios clicáveis) na área visível; a moldura de árvores sobra em volta.
+  const view = {
+    x0: Math.min(0, ...SPOTS.map((b) => b.x)), y0: Math.min(0, ...SPOTS.map((b) => b.y)),
+    x1: Math.max(map.w - 2 * PAD, ...SPOTS.map((b) => b.x + b.w)) + 2, y1: Math.max(map.h - 2 * PAD, ...SPOTS.map((b) => b.y + b.h)) + 1,
+  };
+  const fit = Math.min(cw / ((view.x1 - view.x0) * 16), ch / ((view.y1 - view.y0) * 16));
+  // Cobre a área toda (sem faixas pretas): a moldura de árvores do próprio mapa preenche as sobras.
+  const cover = Math.max(cw / (map.w * 16), ch / (map.h * 16));
+  const sc = Math.max(cw < 700 ? 1.5 : 1, fit, cover);
   const T = 16 * sc;
   const W = map.w * T, H = map.h * T;
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => bump());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   useEffect(() => {
     baseRef.current?.replaceChildren(map.base);
     overRef.current?.replaceChildren(map.over);
     const el = box.current;
     if (!el) return;
-    // Começa mostrando a praça e o centro da cidade.
-    el.scrollLeft = Math.max(0, ((PLAZA.x0 + PAD + 14) * T) - el.clientWidth / 2);
-    el.scrollTop = Math.max(0, ((PLAZA.y0 + PAD - 2) * T) - el.clientHeight / 2.6);
+    // Centraliza a cidade (no celular a escala mínima deixa arrastar para os lados).
+    el.scrollLeft = Math.max(0, ((view.x0 + view.x1) / 2 + PAD) * T - el.clientWidth / 2);
+    el.scrollTop = Math.max(0, ((view.y0 + view.y1) / 2 + PAD) * T - el.clientHeight / 2);
     // Arrastar para explorar (mouse); no toque, a rolagem nativa já funciona.
     let drag: { x: number; y: number; l: number; t: number } | null = null;
     const down = (e: PointerEvent) => {
@@ -177,7 +193,7 @@ function City({ map, onOpen }: { map: RenderedMap; onOpen: (b: Spot) => void }) 
         <div ref={overRef} class="mapscene__layer is-over" />
         <div class="city__spots">
           {SPOTS.map((b) => (
-            <button key={b.id} class={`spot ${b.soon ? 'is-soon' : ''}`} onClick={() => onOpen(b)}
+            <button key={b.id} class={`spot ${b.soon ? 'is-soon' : ''} ${b.end ? 'is-end' : ''}`} onClick={() => onOpen(b)}
               style={{ left: `${(b.x + PAD) * T}px`, top: `${(b.y + PAD) * T}px`, width: `${b.w * T}px`, height: `${b.h * T}px` }}
               aria-label={`${b.title}: ${b.sub}${b.soon ? ' (em breve)' : ''}`}>
               <span class="sign">

@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { GameApp } from '../app/GameApp';
-import { itemSprite, trainerSprite } from '../app/assets';
+import { itemSprite, trainerSprite, uiIcon } from '../app/assets';
 import { DEFAULT_AVATAR } from '../data/content/avatars';
 import { caughtSpeciesCount, trainerLevel, trainerXpForLevel } from '../core/world';
 import { AppContext, fmt } from './components';
@@ -19,25 +19,25 @@ import { StatsScreen } from './screens/Stats';
 import { SettingsScreen } from './screens/Settings';
 import { OfflineModal, OfflineProgress, StarterPicker } from './screens/Modals';
 
-type Icon = { item: string } | { pixel: keyof typeof PIXEL_ICONS };
+type Icon = { item: string } | { ui: string } | { pixel: keyof typeof PIXEL_ICONS };
 const SCREENS: { id: string; label: string; icon: Icon; C: (p: ScreenProps) => preact.JSX.Element | null }[] = [
-  { id: 'hub', label: 'Hub', icon: { pixel: 'house' }, C: HubScreen },
-  { id: 'map', label: 'Mapas', icon: { item: 'town-map' }, C: MapScreen },
-  { id: 'explore', label: 'Hunt', icon: { pixel: 'swords' }, C: ExploreScreen },
-  { id: 'dex', label: 'Pokédex', icon: { item: 'poke-radar' }, C: PokedexScreen },
-  { id: 'party', label: 'Equipe', icon: { item: 'poke-ball' }, C: PartyScreen },
-  { id: 'pc', label: 'PC', icon: { item: 'storage-key' }, C: PcScreen },
-  { id: 'bag', label: 'Inventário', icon: { item: 'explorer-kit' }, C: BagScreen },
-  { id: 'shop', label: 'Loja', icon: { item: 'amulet-coin' }, C: ShopScreen },
-  { id: 'workshop', label: 'Oficina', icon: { item: 'up-grade' }, C: WorkshopScreen },
-  { id: 'research', label: 'Pesquisa', icon: { item: 'journal' }, C: ResearchScreen },
-  { id: 'auto', label: 'Automações', icon: { item: 'machine-part' }, C: AutoManagerScreen },
-  { id: 'stats', label: 'Estatísticas', icon: { item: 'vs-recorder' }, C: StatsScreen },
+  { id: 'hub', label: 'Hub', icon: { ui: 'key-item/camping-gear' }, C: HubScreen },
+  { id: 'map', label: 'Mapas', icon: { ui: 'key-item/town-map' }, C: MapScreen },
+  { id: 'explore', label: 'Hunt', icon: { ui: 'key-item/dowsing-machine-gen3' }, C: ExploreScreen },
+  { id: 'dex', label: 'Pokédex', icon: { ui: 'key-item/poke-radar' }, C: PokedexScreen },
+  { id: 'party', label: 'Equipe', icon: { ui: 'ball/poke' }, C: PartyScreen },
+  { id: 'pc', label: 'PC', icon: { ui: 'storage/pokemon-box' }, C: PcScreen },
+  { id: 'bag', label: 'Inventário', icon: { ui: 'key-item/explorer-kit' }, C: BagScreen },
+  { id: 'shop', label: 'Loja', icon: { ui: 'other-item/discount-coupon' }, C: ShopScreen },
+  { id: 'workshop', label: 'Oficina', icon: { ui: 'key-item/machine-part' }, C: WorkshopScreen },
+  { id: 'research', label: 'Pesquisa', icon: { ui: 'key-item/journal' }, C: ResearchScreen },
+  { id: 'auto', label: 'Automações', icon: { ui: 'key-item/pokeblock-kit' }, C: AutoManagerScreen },
+  { id: 'stats', label: 'Estatísticas', icon: { ui: 'key-item/vs-recorder' }, C: StatsScreen },
 ];
 
 export function NavIcon({ icon, size = 28 }: { icon: Icon; size?: number }) {
   if ('pixel' in icon) return <span class="nav-icon" style={{ width: `${size}px`, height: `${size}px`, backgroundImage: PIXEL_ICONS[icon.pixel] }} aria-hidden="true" />;
-  return <img class="nav-icon" src={itemSprite(icon.item)} width={size} height={size} alt="" />;
+  return <img class="nav-icon" src={'ui' in icon ? uiIcon(icon.ui) : itemSprite(icon.item)} width={size} height={size} alt="" />;
 }
 
 export function App({ app }: { app: GameApp }) {
@@ -68,13 +68,13 @@ export function App({ app }: { app: GameApp }) {
             </span>
           </button>
           <div class="wallet">
-            <button class="coin" onClick={() => go('shop')} title="Pokédólares"><img src={itemSprite('nugget')} width={40} height={40} alt="" /><span class="pk-num">{fmt(s.player.money)}</span></button>
-            <button class="coin" onClick={() => go('research')} title="Pontos de Pesquisa"><img src={itemSprite('pp-up')} width={40} height={40} alt="" /><span class="pk-num">{fmt(s.player.researchPoints)}</span></button>
-            <button class="coin coin--wide" onClick={() => go('dex')} title="Espécies capturadas"><img src={itemSprite('poke-ball')} width={40} height={40} alt="" /><span class="pk-num">{caughtSpeciesCount(s)}</span></button>
+            <button class="coin" onClick={() => go('shop')} title="Pokédólares"><img src={uiIcon('valuable-item/relic-gold')} width={44} height={44} alt="" /><span class="pk-num">{fmt(s.player.money)}</span></button>
+            <button class="coin" onClick={() => go('research')} title="Pontos de Pesquisa"><img src={uiIcon('medicine/pp-up')} width={44} height={44} alt="" /><span class="pk-num">{fmt(s.player.researchPoints)}</span></button>
+            <button class="coin coin--wide" onClick={() => go('dex')} title="Espécies capturadas"><img src={uiIcon('ball/poke')} width={44} height={44} alt="" /><span class="pk-num">{caughtSpeciesCount(s)}</span></button>
           </div>
           <div class="topbar__actions">
-            <button class="icon-btn" onClick={fullscreen} title="Tela cheia" aria-label="Tela cheia"><NavIcon icon={{ pixel: 'full' }} size={22} /></button>
-            <button class={`icon-btn ${screen === 'settings' ? 'is-on' : ''}`} onClick={() => go('settings')} title="Ajustes" aria-label="Ajustes"><NavIcon icon={{ pixel: 'gear' }} size={24} /></button>
+            <button class="icon-btn" onClick={fullscreen} title="Tela cheia" aria-label="Tela cheia"><NavIcon icon={{ ui: 'key-item/go-goggles-gen3' }} size={40} /></button>
+            <button class={`icon-btn ${screen === 'settings' ? 'is-on' : ''}`} onClick={() => go('settings')} title="Ajustes" aria-label="Ajustes"><NavIcon icon={{ ui: 'key-item/teachy-tv' }} size={40} /></button>
           </div>
         </header>
         <nav class="sidenav" aria-label="Navegação">

@@ -1,7 +1,6 @@
 // Renderiza mapas reais de Pokémon FireRed/LeafGreen e Emerald a partir das decompilações da pret (pokefirered,
 // pokeemerald), baixando os arquivos originais (tiles PNG indexados de 4 bpp, paletas JASC, metatiles e mapas)
 // por CDN no navegador — nada disso é versionado aqui, do mesmo jeito que os sprites dos Pokémon.
-import { get as idbGet, set as idbSet } from 'idb-keyval';
 import maplinks from '../data/generated/maplinks.json';
 
 export type Game = 'frlg' | 'emerald';
@@ -36,14 +35,6 @@ const LINKS = maplinks as unknown as {
   worlds: Record<string, WorldInfo>;
   pos: Record<string, [number, number]>;
 };
-
-/** Posição (em blocos) da área no mundo real da região, se houver. */
-export function worldPos(areaId: string): [number, number] | null {
-  return LINKS.pos[areaId] ?? null;
-}
-export function hasWorld(regionId: string): boolean {
-  return !!LINKS.worlds[regionId];
-}
 
 export function layoutKeyForArea(areaId: string): string | null {
   return LINKS.areas[areaId] ?? null;
@@ -262,53 +253,4 @@ export function renderLayout(key: string, pad = 10, keep = true): Promise<Render
     return { key, w: W, h: H, pad, base: toCanvas(base), over: toCanvas(over), cells };
   };
   return keep ? once(`map:${key}:${pad}`, job) : job();
-}
-
-export interface RenderedWorld {
-  url: string;
-  /** Tamanho do mundo em blocos. */
-  w: number;
-  h: number;
-}
-
-/** Monta o mundo da região (mapas externos encaixados pelas conexões do jogo) numa imagem reduzida. */
-export function renderWorld(regionId: string, onProgress?: (done: number, total: number) => void): Promise<RenderedWorld> {
-  return once(`world:${regionId}`, async () => {
-    const info = LINKS.worlds[regionId];
-    if (!info) throw new Error(`sem mundo para ${regionId}`);
-    // Montar o mundo baixa dezenas de mapas: o resultado fica guardado no navegador para as próximas visitas.
-    const cacheKey = `pkidle:world:${regionId}:v1`;
-    try {
-      const saved = await idbGet<Blob>(cacheKey);
-      if (saved) return { url: URL.createObjectURL(saved), w: info.w, h: info.h };
-    } catch {
-      /* sem IndexedDB: monta de novo */
-    }
-    const px = Math.max(2, Math.min(4, Math.floor(1700 / info.w)));
-    const c = document.createElement('canvas');
-    c.width = info.w * px;
-    c.height = info.h * px;
-    const g = c.getContext('2d')!;
-    g.fillStyle = '#2c5236';
-    g.fillRect(0, 0, c.width, c.height);
-    g.imageSmoothingEnabled = true;
-    g.imageSmoothingQuality = 'high';
-    let done = 0;
-    // Em lotes, para não estourar memória nem a fila de downloads.
-    for (let i = 0; i < info.maps.length; i += 6) {
-      await Promise.all(info.maps.slice(i, i + 6).map(async (m) => {
-        try {
-          const r = await renderLayout(m.key, 0, false);
-          g.drawImage(r.base, m.x * px, m.y * px, (r.w) * px, (r.h) * px);
-          g.drawImage(r.over, m.x * px, m.y * px, (r.w) * px, (r.h) * px);
-        } catch {
-          /* um mapa que falha não derruba o mundo */
-        }
-        onProgress?.(++done, info.maps.length);
-      }));
-    }
-    const blob = await new Promise<Blob | null>((res) => c.toBlob(res));
-    if (blob && done === info.maps.length) idbSet(cacheKey, blob).catch(() => undefined);
-    return { url: blob ? URL.createObjectURL(blob) : c.toDataURL(), w: info.w, h: info.h };
-  });
 }

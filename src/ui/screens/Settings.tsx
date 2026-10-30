@@ -89,6 +89,7 @@ export function SettingsScreen(_: ScreenProps) {
             Pokémon andando em 8 direções: <a href="https://sprites.pmdcollab.org/" target="_blank" rel="noreferrer">PMDCollab (SpriteCollab)</a>,
             licença <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noreferrer">CC BY-NC 4.0</a>, créditos aos
             artistas listados em cada sprite. Treinadores: <a href="https://play.pokemonshowdown.com/sprites/trainers/" target="_blank" rel="noreferrer">Pokémon Showdown</a>.
+            Ícones de itens, menus e Pokémon: <a href="https://msikma.github.io/pokesprite/" target="_blank" rel="noreferrer">PokéSprite</a>.
           </p>
           <p>Código, sistemas e regras de jogo: implementação própria deste projeto.</p>
         </div>

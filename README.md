@@ -28,6 +28,7 @@ Abra o endereço que o Vite mostrar (normalmente http://localhost:5173).
 | `npm run build:tokens` | Gera `src/ui/styles/tokens.css` a partir de `design/tokens.json` (tokens do Design System) |
 | `npm run e2e` | Teste de ponta a ponta no navegador (Playwright) |
 | `npm run sim -- 72 1` | Simulador de balanceamento: um bot joga 72 h (semente 1) e mostra o ritmo |
+| `npm run build:itemicons` | Regenera `src/data/generated/itemicons.json` e `pokeicons.json` (ícones do PokéSprite) |
 | `npm run build:maplinks` | Regenera `src/data/generated/maplinks.json` (área → mapa dos jogos GBA; instruções no script) |
 | `npm run sprites:download` | Baixa os sprites para `public/assets/sprites` (opcional; ver abaixo) |
 
@@ -41,10 +42,12 @@ Por padrão o jogo carrega os sprites do repositório público da PokéAPI:
 - estáticos de frente, costas e shiny para as 1025 espécies;
 - animados da Gen 5 até o #649.
 
-Os mapas da hunt, a cidade do Hub e o mapa-múndi de Kanto/Hoenn usam os arquivos originais de FireRed/LeafGreen e
+Os mapas da hunt, a cidade do Hub e os tiles do mapa em trilha usam os arquivos originais de FireRed/LeafGreen e
 Emerald (tiles, paletas, metatiles e mapas) das decompilações da [pret](https://github.com/pret), baixados e montados
 no navegador (`src/app/pret.ts`). A ligação área → mapa é gerada por `npm run build:maplinks` (instruções no script).
 Os Pokémon andando em 8 direções vêm do [PMDCollab](https://sprites.pmdcollab.org/) (CC BY-NC 4.0, com crédito).
+Ícones de itens, do menu, da carteira e dos Pokémon no mapa vêm do [PokéSprite](https://msikma.github.io/pokesprite/);
+a tabela item → ícone é gerada por `npm run build:itemicons`.
 
 Nenhuma imagem é versionada aqui. Para servir localmente:
 

@@ -1,11 +1,11 @@
 /* Hub: Celadon City em tela cheia, placas nos prédios e painéis flutuantes (dock) por cima da cidade. */
-.hubview { position: relative; height: calc(100vh - 104px); min-height: 640px; border-radius: var(--radius-lg); overflow: hidden; border: 2px solid var(--bezel); box-shadow: var(--bevel); background: #000; }
+.hubview { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; height: calc(100vh - 118px); min-height: 640px; }
 
-.city { position: absolute; inset: 0; overflow: auto; scrollbar-width: none; image-rendering: pixelated; isolation: isolate; cursor: grab; }
+.city { position: relative; min-height: 0; overflow: auto; background: #0a1222; scrollbar-width: none; image-rendering: pixelated; isolation: isolate; cursor: grab; }
 .city::-webkit-scrollbar { display: none; }
 .city.is-dragging { cursor: grabbing; }
 .city.is-dragging .spot { pointer-events: none; }
-.city.is-loading { display: grid; place-items: center; cursor: default; background: radial-gradient(circle at 50% 40%, #1b2b4a, #0a1222); }
+.city.is-loading { height: 60vh; display: grid; place-items: center; cursor: default; background: radial-gradient(circle at 50% 40%, #1b2b4a, #0a1222); }
 .city.is-loading .mapscene__loading { position: static; transform: none; }
 .city__world { position: relative; }
 .city::after { content: ''; position: sticky; display: block; inset: 0; pointer-events: none; }
@@ -39,10 +39,7 @@
 .spot.is-soon .sign { border-color: rgba(255, 204, 61, 0.35); }
 
 /* Dock de painéis */
-.hub-dock {
-  position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 20; display: grid; gap: 10px;
-  grid-template-columns: minmax(250px, 0.9fr) minmax(0, 1.5fr) minmax(260px, 1fr); align-items: end; pointer-events: none;
-}
+.hub-dock { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr) minmax(280px, 1fr); gap: 14px; align-items: stretch; }
 .dock-card {
   position: relative; pointer-events: auto; display: grid; gap: 8px; padding: 10px 12px 12px; border-radius: 14px; overflow: hidden; color: var(--ink);
   background: linear-gradient(180deg, rgba(20, 32, 58, 0.94), rgba(10, 18, 34, 0.94)); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -79,7 +76,7 @@
 .team-card:hover { border-color: rgba(255, 255, 255, 0.35); }
 .team-card.is-lead { border-color: var(--lens); box-shadow: 0 0 0 1px var(--lens), 0 0 18px color-mix(in srgb, var(--lens) 40%, transparent); }
 .team-card.is-fainted { opacity: 0.5; }
-.team-card.is-empty { border-style: dashed; background: transparent; min-height: 106px; cursor: default; }
+.team-card.is-empty { border-style: dashed; background: transparent; min-height: 96px; cursor: default; }
 .team-card__lvl { font-family: var(--font-lcd); font-size: 17px; line-height: 15px; }
 .team-card .meter { width: 100%; height: 5px; }
 
@@ -92,17 +89,15 @@
 .challenge-need { display: grid; gap: 6px; font-size: 12.5px; color: #c8d6f0; }
 .challenge-need .pk-btn { justify-self: start; }
 
-@media (max-width: 1280px) {
-  .hub-dock { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1100px) {
+  .hubview { grid-template-rows: auto auto; height: auto; min-height: 0; }
+  .city { height: 60vh; min-height: 380px; }
+  .hub-dock { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .dock-card--team { grid-column: 1 / -1; order: -1; }
 }
 @media (max-width: 900px) {
-  .hubview { height: auto; min-height: 0; overflow: visible; border: 0; box-shadow: none; background: none; display: grid; gap: 10px; }
-  .city { position: relative; inset: auto; height: 62vh; min-height: 380px; border-radius: var(--radius-lg); border: 2px solid var(--bezel); }
-  .hub-dock { position: static; grid-template-columns: minmax(0, 1fr); }
-  .team-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .sign { padding: 4px 10px 5px 6px; }
-  .sign__icon { width: 24px; height: 24px; }
+  .sign { padding: 0 8px 0 0; }
+  .sign__icon { width: 28px; height: 28px; }
   .sign__text b { font-size: 12px; }
   .sign__text span { display: none; }
 }
@@ -128,3 +123,7 @@
 .craft-mat.is-short { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
 .craft-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
 .craft-list--grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); max-height: 560px; overflow-y: auto; padding-right: 2px; }
+
+.spot.is-end .sign { left: auto; right: 0; transform: none; }
+.spot.is-end:hover .sign { transform: translateY(-3px); }
+.spot.is-end .sign::after { left: auto; right: 24px; transform: rotate(45deg); }

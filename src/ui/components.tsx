@@ -2,7 +2,7 @@ import { createContext } from 'preact';
 import { useContext, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { GameApp } from '../app/GameApp';
-import { itemSprite, pokemonSprite, staticFallback } from '../app/assets';
+import { itemSprite, legacyItemSprite, pokemonSprite, staticFallback } from '../app/assets';
 import type { TypeId } from '../data/types';
 import type { OwnedPokemon } from '../core/state/types';
 
@@ -77,7 +77,12 @@ export function ItemIcon({ id, sprite, size = 24 }: { id: string; sprite?: strin
       height={size}
       alt=""
       loading="lazy"
-      onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
+      onError={(e) => {
+        const img = e.currentTarget as HTMLImageElement;
+        const legacy = legacyItemSprite(id, sprite);
+        if (img.src !== legacy) img.src = legacy;
+        else img.style.visibility = 'hidden';
+      }}
     />
   );
 }
