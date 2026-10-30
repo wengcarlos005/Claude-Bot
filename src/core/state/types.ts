@@ -179,6 +179,8 @@ export interface GameState {
     badges: string[];
     champions: string[];
     starterChosen: boolean;
+    /** Avatar do treinador (cosmético); padrão em data/content/avatars.ts. */
+    avatar?: string;
   };
   party: string[];
   pokemon: Record<string, OwnedPokemon>;

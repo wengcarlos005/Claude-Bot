@@ -30,7 +30,7 @@ const PALETTES: Record<Biome, Palette> = {
 };
 
 /** Converte um desenho em caracteres para SVG (data URI). '.' é transparente. */
-function art(rows: string[], ink: Record<string, string>): string {
+export function art(rows: string[], ink: Record<string, string>): string {
   const h = rows.length;
   const w = Math.max(...rows.map((r) => r.length));
   let rects = '';

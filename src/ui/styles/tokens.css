@@ -1,30 +1,30 @@
 /* Pokémon Idle — generated from design/tokens.json (npm run build:tokens). Não edite à mão. */
 :root, [data-theme="noite"] {
-  --ground: #121419;
-  --screen: #1b2124;
-  --screen-raised: #242c30;
-  --bezel: #3a454b;
-  --bezel-strong: #73838b;
+  --ground: #0a1222;
+  --screen: #111d33;
+  --screen-raised: #182843;
+  --bezel: #253a5c;
+  --bezel-strong: #4f6c9c;
   --chassis: #c8303c;
   --chassis-deep: #8c1b25;
   --on-chassis: #fff6f2;
-  --ink: #eef3ef;
-  --ink-muted: #a3b3b1;
-  --lens: #56b6ff;
-  --lens-soft: #16324a;
-  --on-lens: #08182a;
+  --ink: #eaf1ff;
+  --ink-muted: #97aacb;
+  --lens: #4aa3ff;
+  --lens-soft: #14315a;
+  --on-lens: #061428;
   --focus: #ffd447;
-  --lcd-ground: #0f2418;
-  --lcd: #a8e27c;
-  --gold: #ffcf40;
-  --gold-soft: #3a2e0c;
-  --good: #62d892;
-  --bad: #ff8080;
+  --lcd-ground: #0c1830;
+  --lcd: #e8f0ff;
+  --gold: #ffcc3d;
+  --gold-soft: #3a2f0e;
+  --good: #4ade80;
+  --bad: #ff6b6b;
   --hp-high: #3fcf7f;
   --hp-mid: #f2c13a;
   --hp-low: #ff5252;
-  --xp: #5aa9ff;
-  --track: #0b0e11;
+  --xp: #4aa3ff;
+  --track: #070d19;
   --type-normal: #a8a77a;
   --type-fire: #ee8130;
   --type-water: #6390f0;
@@ -45,10 +45,10 @@
   --type-fairy: #d685ad;
   --on-type-light: #14161c;
   --on-type-dark: #ffffff;
-  --bevel: 0 3px 0 #07090c;
+  --bevel: 0 3px 0 #050a14;
   --bevel-chassis: 0 3px 0 #5e1118;
-  --bezel-inset: inset 0 0 0 1px #0c1013, inset 0 2px 0 #0c1013;
-  --lift: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --bezel-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px #0a1426;
+  --lift: 0 14px 36px rgba(2, 6, 16, 0.6);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {

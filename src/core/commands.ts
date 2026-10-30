@@ -1,5 +1,6 @@
 // Comandos do jogador: única forma de a UI alterar o estado. Cada comando valida e retorna Result.
 import type { GameContext } from './context';
+import { AVATARS } from '../data/content/avatars';
 import { upgradeLevel } from './bonuses';
 import { addPokemon, createPokemon, speciesOf } from './pokemon';
 import type { CaptureRule, GameState, Settings } from './state/types';
@@ -28,7 +29,8 @@ export type Command =
   | { type: 'SavePreset'; name: string }
   | { type: 'LoadPreset'; index: number }
   | { type: 'DeletePreset'; index: number }
-  | { type: 'SetPlayerName'; name: string };
+  | { type: 'SetPlayerName'; name: string }
+  | { type: 'SetAvatar'; avatar: string };
 
 const ok = (message?: string): Result => ({ ok: true, message });
 const fail = (error: string): Result => ({ ok: false, error });
@@ -173,6 +175,10 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       return ok();
     case 'SetPlayerName':
       state.player.name = cmd.name.trim().slice(0, 16) || 'Treinador';
+      return ok();
+    case 'SetAvatar':
+      if (!AVATARS.some((a) => a.id === cmd.avatar)) return fail('Avatar desconhecido.');
+      state.player.avatar = cmd.avatar;
       return ok();
   }
 }
