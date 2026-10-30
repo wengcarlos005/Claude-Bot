@@ -1,5 +1,9 @@
 // Hub: a cidade do jogador. Cada prédio leva a uma parte do jogo; o que ainda não existe aparece como "Em breve".
-import { useEffect, useMemo, useRef } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
+import { Cell, renderLayout, type RenderedMap } from '../../app/pret';
+import { PmdSprite } from '../field/MapScene';
+import { directionRow } from '../../app/pmd';
 import type { ScreenProps } from '../App';
 import { CroppedSprite, Sprite, duration, fmt, useApp } from '../components';
 import { badgeSprite, trainerSprite } from '../../app/assets';
@@ -91,8 +95,7 @@ export function HubScreen({ go }: ScreenProps) {
     go(({ center: 'party', shop: 'shop', lab: 'research', hunt: 'map' } as Record<string, string>)[b.id]);
   };
 
-  return (
-    <div class="hub">
+  const procedural = (
       <div class="town-wrap" ref={wrap}>
         <div class="town" style={{ backgroundImage: `url("${arts.ground}")` }}>
           {TREES.map(([x, y], i) => {
@@ -134,6 +137,11 @@ export function HubScreen({ go }: ScreenProps) {
           </span>
         </div>
       </div>
+  );
+
+  return (
+    <div class="hub">
+      <CityView fallback={procedural} onOpen={(id) => open(BUILDINGS.find((x) => x.id === id)!)} />
 
       <div class="hub__panels">
         <HuntCard go={go} />
@@ -239,5 +247,113 @@ function ChallengeCard({ area, go }: { area: ResolvedArea | null; go: (id: strin
         )}
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------- cidade real (Celadon, FireRed)
+
+const CITY = 'frlg:CeladonCity';
+const CITY_PAD = 1;
+/** Prédios do Hub sobre o mapa real (coordenadas em blocos de 16 px do mapa original). */
+const SPOTS: { id: string; x: number; y: number; w: number; h: number; title: string; sub: string; soon?: boolean }[] = [
+  { id: 'center', x: 46, y: 7.6, w: 5, h: 4.4, title: 'Centro Pokémon', sub: 'Cure e organize a equipe' },
+  { id: 'shop', x: 9, y: 5, w: 9, h: 10.2, title: 'Loja', sub: 'Itens e buffs' },
+  { id: 'gym', x: 8, y: 26, w: 8, h: 4.4, title: 'Ginásio', sub: 'Desafie o próximo líder' },
+  { id: 'lab', x: 18.1, y: 4.6, w: 6.9, h: 7.4, title: 'Laboratório', sub: 'Pesquisa e melhorias' },
+  { id: 'arena', x: 27, y: 4.6, w: 7, h: 7.4, title: 'Arena PvP', sub: 'Batalhe contra jogadores', soon: true },
+  { id: 'market', x: 31, y: 17.4, w: 7, h: 4.6, title: 'Mercado Global', sub: 'Negocie com treinadores', soon: true },
+  { id: 'guild', x: 24, y: 16, w: 6, h: 3.2, title: 'Guilda', sub: 'Evolua em grupo', soon: true },
+  { id: 'hunt', x: 54, y: 12.4, w: 6, h: 4, title: 'Áreas de Caça', sub: 'Saída para as rotas' },
+];
+/** Praça da fonte, onde a equipe passeia. */
+const PLAZA_BOX = { x0: 9, y0: 17, x1: 18, y1: 24 };
+
+interface CityWalker { uid: string; x: number; y: number; dir: number; at: number; movingUntil: number }
+
+function CityView({ fallback, onOpen }: { fallback: ComponentChildren; onOpen: (id: string) => void }) {
+  const [map, setMap] = useState<RenderedMap | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    renderLayout(CITY, CITY_PAD).then((m) => alive && setMap(m)).catch(() => alive && setFailed(true));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (failed) return <>{fallback}</>;
+  if (!map) return <div class="city is-loading"><div class="mapscene__loading"><span class="spinner" />Carregando a cidade…</div></div>;
+  return <City map={map} onOpen={onOpen} />;
+}
+
+function City({ map, onOpen }: { map: RenderedMap; onOpen: (id: string) => void }) {
+  const app = useApp();
+  const s = app.state;
+  const box = useRef<HTMLDivElement>(null);
+  const baseRef = useRef<HTMLDivElement>(null);
+  const overRef = useRef<HTMLDivElement>(null);
+  const [, setTick] = useState(0);
+  const bump = () => setTick((t) => t + 1);
+  useEffect(() => {
+    baseRef.current?.replaceChildren(map.base);
+    overRef.current?.replaceChildren(map.over);
+    const w = box.current;
+    if (w) w.scrollLeft = ((PLAZA_BOX.x0 + CITY_PAD) * 16 * scaleOf(w.clientWidth)) - w.clientWidth / 4;
+  }, [map.key]);
+  const cw = box.current?.clientWidth ?? 1200;
+  const scaleOf = (w: number) => (w >= 900 ? w / (map.w * 16) : 1.5);
+  const sc = scaleOf(cw);
+  const T = 16 * sc;
+  const now = performance.now();
+
+  // A equipe passeia pela praça: um passo por vez nas células andáveis.
+  const walkers = useRef<CityWalker[]>([]);
+  const walkable = (x: number, y: number) => {
+    const c = map.cells[(y + CITY_PAD) * map.w + (x + CITY_PAD)];
+    return (c === Cell.Walk || c === Cell.Grass) && x >= PLAZA_BOX.x0 && x <= PLAZA_BOX.x1 && y >= PLAZA_BOX.y0 && y <= PLAZA_BOX.y1;
+  };
+  walkers.current = s.party.map((uid, i) => {
+    let w = walkers.current.find((x) => x.uid === uid);
+    if (!w) {
+      const spots: [number, number][] = [];
+      for (let y = PLAZA_BOX.y0; y <= PLAZA_BOX.y1; y++) for (let x = PLAZA_BOX.x0; x <= PLAZA_BOX.x1; x++) if (walkable(x, y)) spots.push([x, y]);
+      const [x, y] = spots[(i * 7 + 3) % Math.max(1, spots.length)] ?? [PLAZA_BOX.x0, PLAZA_BOX.y0];
+      w = { uid, x, y, dir: 0, at: now + 800 + i * 400, movingUntil: 0 };
+    }
+    if (now >= w.at) {
+      const [dx, dy] = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)];
+      w.at = now + 1600 + Math.random() * 2600;
+      if (walkable(w.x + dx, w.y + dy) && !walkers.current.some((o) => o.uid !== uid && o.x === w!.x + dx && o.y === w!.y + dy)) {
+        w = { ...w, x: w.x + dx, y: w.y + dy, dir: directionRow(dx, dy), movingUntil: now + 700 };
+      } else w = { ...w, dir: directionRow(dx, dy) };
+    }
+    return w;
+  });
+  const at = (x: number, y: number) => ({ left: `${(x + CITY_PAD) * T + T / 2}px`, top: `${(y + CITY_PAD) * T + T}px`, zIndex: Math.round((y + CITY_PAD) * 10) });
+  const W = map.w * T, H = map.h * T;
+  return (
+    <div class="city" ref={box}>
+      <div class="city__world" style={{ width: `${W}px`, height: `${H}px` }}>
+        <div ref={baseRef} class="mapscene__layer" />
+        {walkers.current.map((w) => {
+          const pk = s.pokemon[w.uid];
+          if (!pk) return null;
+          return <PmdSprite key={w.uid} dex={speciesOf(app.data, pk.species).id} shiny={pk.shiny} anim={now < w.movingUntil ? 'Walk' : 'Idle'} dir={w.dir} scale={sc} bump={bump} class="is-wander" style={at(w.x, w.y)} />;
+        })}
+        <span class="city__trainer" style={at(13.5, 23.2)}><img src={trainerSprite(s.player.avatar ?? DEFAULT_AVATAR)} alt="Você" /></span>
+        <div ref={overRef} class="mapscene__layer is-over" />
+        <div class="city__spots">
+          {SPOTS.map((b) => (
+            <button key={b.id} class={`spot ${b.soon ? 'is-soon' : ''}`} onClick={() => onOpen(b.id)}
+              style={{ left: `${(b.x + CITY_PAD) * T}px`, top: `${(b.y + CITY_PAD) * T}px`, width: `${b.w * T}px`, height: `${b.h * T}px` }}
+              aria-label={`${b.title}: ${b.sub}${b.soon ? ' (em breve)' : ''}`}>
+              <span class="bld__label">
+                <b>{b.title}</b>
+                <span>{b.soon ? 'Em breve' : b.sub}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

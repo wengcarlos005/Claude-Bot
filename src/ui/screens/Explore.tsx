@@ -8,7 +8,7 @@ import { ivGrade } from '../../core/formulas/stats';
 import { encounterTable } from '../../core/systems/exploration';
 import { isFarmArea, levelCap, trainerLevel, trainerXpForLevel, winsToClear } from '../../core/world';
 import type { CaptureRule, Settings } from '../../core/state/types';
-import { RouteField } from '../field/RouteField';
+import { MapScene } from '../field/MapScene';
 import { Meter } from '../hub/Hub';
 
 function clock(ms: number): string {
@@ -60,7 +60,7 @@ export function ExploreScreen({ go }: ScreenProps) {
     : ex.next?.kind === 'wild' ? 'Indo até o próximo Pokémon' : ex.next ? `Desafio: ${ex.next.trainerName}` : 'Explorando';
   return (
     <div class="huntview">
-      <RouteField />
+      <MapScene />
       <div class="hv hv--area">
         <div class="hv-area__name">
           <span class="hv-area__region">{region.name}</span>
