@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
 import { ItemIcon, Window, fmt, useApp } from '../components';
 import { requirementText } from '../text';
-import { FRAGMENTS, canAfford, craftableItems, itemCraftCost, nextUpgradeCost, type CraftCost } from '../../core/systems/crafting';
+import { canAfford, craftableItems, itemCraftCost, nextUpgradeCost, type CraftCost } from '../../core/systems/crafting';
 import { upgradeLevel } from '../../core/bonuses';
 import { checkRequirement } from '../../core/world';
 
@@ -33,22 +33,6 @@ export function WorkshopScreen(_: ScreenProps) {
 
   return (
     <div class="stack">
-      <section class="frag-bar" aria-label="Fragmentos">
-        {FRAGMENTS.map((id) => {
-          const it = app.data.items.get(id)!;
-          return (
-            <div key={id} class={`frag frag--${id}`} title={it.description}>
-              <ItemIcon id={id} size={36} />
-              <div>
-                <b class="pk-num">{fmt(s.inventory[id] ?? 0)}</b>
-                <span>{it.name.replace('Fragmento ', '')}</span>
-              </div>
-            </div>
-          );
-        })}
-        <p class="frag-bar__hint small muted">Fragmentos caem de selvagens, treinadores, desafios, ginásios, shinies e lendários. Regiões mais avançadas rendem mais.</p>
-      </section>
-
       <div class="cols">
         <Window title="Melhorias de treinador">
           <ul class="craft-list">

@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
 import { Window, duration, fmt, pct, useApp } from '../components';
+import { uiIcon } from '../../app/assets';
 import { estimateHunt, type HuntEstimate } from '../../core/analyzer';
 import { areaUnlocked, isFarmArea } from '../../core/world';
 import { ACHIEVEMENTS } from '../../data/content/achievements';
@@ -34,68 +35,69 @@ export function StatsScreen(_: ScreenProps) {
 
   return (
     <div class="cols">
-      <Window
-        title="Hunt Analyzer"
-        actions={<button class="pk-btn pk-btn--sm pk-btn--primary" disabled={running !== null} onClick={compare}>{running !== null ? `Analisando… ${pct(running)}` : 'Comparar áreas liberadas'}</button>}
-      >
-        <p class="small muted">
-          Projeção: simula 10 min da sua equipe atual (com suas melhorias, regras de captura e itens) em cada área liberada, usando o motor real do
-          jogo com semente fixa. Eficiência = XP/h × (taxa de vitória)². Os valores reais variam com sorte, horário e mudanças na equipe.
-        </p>
-        {results.length > 0 && (
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Área</th><th>XP/h</th><th>₽/h</th><th>Encontros/h</th><th>Capturas/h</th><th>Derrotas/h</th><th>Vitória</th></tr></thead>
-              <tbody>
-                {results.map((r, i) => (
-                  <tr key={r.areaId} class={i === 0 ? 'current' : ''}>
-                    <td>
-                      {i === 0 && <span class="pk-chip-btn" aria-pressed="true">Melhor</span>} {app.data.areas.get(r.areaId)?.name}{' '}
-                      <button class="pk-btn pk-btn--sm pk-btn--ghost" onClick={() => app.dispatch({ type: 'SelectArea', areaId: r.areaId })}>Ir</button>
-                    </td>
-                    <td class="num">{fmt(r.xpPerHour)}</td>
-                    <td class="num">{fmt(r.moneyPerHour)}</td>
-                    <td class="num">{fmt(r.encountersPerHour)}</td>
-                    <td class="num">{r.capturesPerHour.toFixed(1)}</td>
-                    <td class={`num ${r.lossesPerHour > 0 ? 'bad' : ''}`}>{r.lossesPerHour.toFixed(1)}</td>
-                    <td class="num">{pct(r.winRate)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Window>
       <div class="stack">
-      <Window title={<>Conquistas <span class="muted small">({s.achievements.length}/{ACHIEVEMENTS.length})</span></>}>
-        <table class="table">
-          <tbody>
-            {ACHIEVEMENTS.map((a) => {
-              const done = s.achievements.includes(a.id);
-              const v = Math.min(metricValue(s, a.metric), a.target);
-              return (
-                <tr key={a.id} class={done ? '' : 'locked'}>
-                  <td>{done ? '◓' : '·'} <b>{a.name}</b><div class="small muted">{a.description}</div></td>
-                  <td class="num right small">{done ? `+${a.rewardPP} PP` : `${fmt(v)}/${fmt(a.target)}`}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Window>
-      <Window title="Estatísticas da conta">
-        <table class="table">
-          <tbody>
-            <tr><td>Tempo de jogo</td><td class="num right">{duration(s.meta.playTimeMs)}</td></tr>
-            <tr><td>Tempo offline acumulado</td><td class="num right">{duration(s.stats.offlineMs)}</td></tr>
+        <Window
+          title="Hunt Analyzer"
+          actions={<button class="pk-btn pk-btn--sm pk-btn--primary" disabled={running !== null} onClick={compare}>{running !== null ? `Analisando… ${pct(running)}` : 'Comparar áreas liberadas'}</button>}
+        >
+          <p class="small muted">
+            Projeção: simula 10 min da sua equipe atual (com suas melhorias, regras de captura e itens) em cada área liberada, usando o motor real do
+            jogo com semente fixa. Eficiência = XP/h × (taxa de vitória)². Os valores reais variam com sorte, horário e mudanças na equipe.
+          </p>
+          {results.length > 0 && (
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Área</th><th>XP/h</th><th>₽/h</th><th>Encontros/h</th><th>Capturas/h</th><th>Derrotas/h</th><th>Vitória</th></tr></thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={r.areaId} class={i === 0 ? 'current' : ''}>
+                      <td>
+                        {i === 0 && <span class="pk-chip-btn" aria-pressed="true">Melhor</span>} {app.data.areas.get(r.areaId)?.name}{' '}
+                        <button class="pk-btn pk-btn--sm pk-btn--ghost" onClick={() => app.dispatch({ type: 'SelectArea', areaId: r.areaId })}>Ir</button>
+                      </td>
+                      <td class="num">{fmt(r.xpPerHour)}</td>
+                      <td class="num">{fmt(r.moneyPerHour)}</td>
+                      <td class="num">{fmt(r.encountersPerHour)}</td>
+                      <td class="num">{r.capturesPerHour.toFixed(1)}</td>
+                      <td class={`num ${r.lossesPerHour > 0 ? 'bad' : ''}`}>{r.lossesPerHour.toFixed(1)}</td>
+                      <td class="num">{pct(r.winRate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Window>
+        <Window title="Estatísticas da conta">
+          <div class="stat-tiles">
+            <div class="stat-tile"><span>Tempo de jogo</span><b class="pk-num">{duration(s.meta.playTimeMs)}</b></div>
+            <div class="stat-tile"><span>Tempo offline</span><b class="pk-num">{duration(s.stats.offlineMs)}</b></div>
             {Object.entries(s.stats).filter(([k]) => LABELS[k]).map(([k, v]) => (
-              <tr key={k}><td>{LABELS[k]}</td><td class="num right">{fmt(v)}</td></tr>
+              <div key={k} class="stat-tile"><span>{LABELS[k]}</span><b class="pk-num">{fmt(v)}</b></div>
             ))}
-            <tr><td>Taxa de captura por arremesso</td><td class="num right">{s.stats.captureAttempts ? pct(s.stats.captures / s.stats.captureAttempts) : '—'}</td></tr>
-          </tbody>
-        </table>
-      </Window>
+            <div class="stat-tile"><span>Captura por arremesso</span><b class="pk-num">{s.stats.captureAttempts ? pct(s.stats.captures / s.stats.captureAttempts) : '—'}</b></div>
+          </div>
+        </Window>
       </div>
+      <Window title={<>Conquistas <span class="muted small">({s.achievements.length}/{ACHIEVEMENTS.length})</span></>}>
+        <ul class="achv">
+          {ACHIEVEMENTS.map((a) => {
+            const done = s.achievements.includes(a.id);
+            const v = Math.min(metricValue(s, a.metric), a.target);
+            return (
+              <li key={a.id} class={`achv__item ${done ? 'is-done' : ''}`}>
+                <img src={uiIcon(done ? 'key-item/medal-box' : 'ball/poke')} width={32} height={32} alt="" />
+                <div>
+                  <b>{a.name}</b>
+                  <span class="small muted">{a.description}</span>
+                  {!done && <span class="achv__bar"><i style={{ width: `${(v / a.target) * 100}%` }} /></span>}
+                </div>
+                <span class="achv__val pk-num">{done ? `+${a.rewardPP} PP` : `${fmt(v)}/${fmt(a.target)}`}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </Window>
     </div>
   );
 }

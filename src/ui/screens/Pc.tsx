@@ -78,9 +78,7 @@ export function PcScreen(_: ScreenProps) {
           </button>
         </div>
       )}
-      {list.length === 0 ? (
-        <Empty>Nenhum Pokémon no PC. Capturas além da equipe de 6 vêm para cá.</Empty>
-      ) : (
+      <div class="pc-box">
         <div class="pk-tiles">
           {list.slice(0, 600).map((p) => {
             const sp = speciesOf(app.data, p.species);
@@ -94,8 +92,13 @@ export function PcScreen(_: ScreenProps) {
               </button>
             );
           })}
+          {/* Caixa de 30 espaços: os vazios aparecem como no PC dos jogos (sem buraco no fim da lista). */}
+          {!q && !onlyShiny && Array.from({ length: Math.max(30, Math.ceil(Math.min(list.length, 600) / 30) * 30) - Math.min(list.length, 600) }, (_, i) => (
+            <span key={`v${i}`} class="pk-tile is-slot" aria-hidden="true" />
+          ))}
         </div>
-      )}
+        {list.length === 0 && (q || onlyShiny) && <Empty>Nenhum Pokémon encontrado com esse filtro.</Empty>}
+      </div>
       {list.length > 600 && <p class="muted small">Mostrando 600 de {list.length}. Use a busca para filtrar.</p>}
       {open && <PokemonDetail uid={open} onClose={() => setOpen(null)} />}
     </Window>

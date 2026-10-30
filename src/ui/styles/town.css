@@ -1,5 +1,5 @@
-/* Hub: Celadon City em tela cheia, placas nos prédios e painéis flutuantes (dock) por cima da cidade. */
-.hubview { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; height: calc(100vh - 118px); min-height: 640px; }
+/* Hub: Celadon City à esquerda (placas nos prédios, equipe na praça) e a lateral com hunt, equipe e próximo desafio. */
+.hubview { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; height: calc(100vh - 118px); min-height: 640px; }
 
 .city { position: relative; min-height: 0; overflow: auto; background: #0a1222; scrollbar-width: none; image-rendering: pixelated; isolation: isolate; cursor: grab; }
 .city::-webkit-scrollbar { display: none; }
@@ -39,27 +39,8 @@
 .spot.is-soon .sign { border-color: rgba(255, 204, 61, 0.35); }
 
 /* Dock de painéis */
-.hub-dock { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr) minmax(280px, 1fr); gap: 14px; align-items: stretch; }
-.dock-card {
-  position: relative; pointer-events: auto; display: grid; gap: 8px; padding: 10px 12px 12px; border-radius: 14px; overflow: hidden; color: var(--ink);
-  background: linear-gradient(180deg, rgba(20, 32, 58, 0.94), rgba(10, 18, 34, 0.94)); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(160, 190, 255, 0.18); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-.dock-card__head { display: flex; align-items: center; gap: 8px; }
-.dock-card__head b { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: 0.04em; }
-.dock-card__meta { margin-left: auto; font-size: 12px; color: var(--ink-muted); font-family: var(--font-lcd); }
-.dock-card__link { margin-left: auto; border: 0; background: none; color: var(--lens); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
-.dock-card__empty { margin: 0; font-size: 13px; color: var(--ink-muted); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); animation: dot-pulse 1.6s ease-in-out infinite; }
 
-.hunt-mini { display: flex; align-items: center; gap: 10px; }
-.hunt-mini .crop { border-radius: 10px; background: rgba(255, 255, 255, 0.06); }
-.hunt-mini__where { display: grid; min-width: 0; }
-.hunt-mini__where b { font-family: var(--font-display); font-weight: 600; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hunt-mini__where span { font-size: 12px; color: var(--ink-muted); }
-.mini-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.mini-stats span { display: grid; padding: 5px 8px; border-radius: 9px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); font-size: 10px; font-weight: 800; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.mini-stats b { font-family: var(--font-lcd); font-weight: 400; font-size: 21px; line-height: 21px; color: #fff; text-transform: none; letter-spacing: 0; }
 .btn-go {
   flex: 1; min-height: 40px; padding: 8px 16px; cursor: pointer; font: inherit; font-family: var(--font-display); font-size: 17px; font-weight: 600; color: #fff;
   background: linear-gradient(180deg, #3fd47a, #22a659); border: 2px solid #167a40; border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 #0f5a2f;
@@ -70,30 +51,14 @@
 .btn-go:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--focus); }
 .btn-go:disabled { filter: grayscale(1) brightness(0.7); cursor: not-allowed; }
 
-.team-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-.team-card { display: grid; justify-items: center; gap: 3px; padding: 6px 6px 8px; cursor: pointer; font: inherit; color: inherit; border-radius: 12px;
-  background: radial-gradient(circle at 50% 30%, rgba(90, 130, 210, 0.28), rgba(255, 255, 255, 0.03) 70%); border: 2px solid rgba(255, 255, 255, 0.1); }
-.team-card:hover { border-color: rgba(255, 255, 255, 0.35); }
-.team-card.is-lead { border-color: var(--lens); box-shadow: 0 0 0 1px var(--lens), 0 0 18px color-mix(in srgb, var(--lens) 40%, transparent); }
-.team-card.is-fainted { opacity: 0.5; }
-.team-card.is-empty { border-style: dashed; background: transparent; min-height: 96px; cursor: default; }
-.team-card__lvl { font-family: var(--font-lcd); font-size: 17px; line-height: 15px; }
-.team-card .meter { width: 100%; height: 5px; }
 
-.dock-card--challenge { min-height: 150px; padding-right: 120px; background: linear-gradient(120deg, rgba(20, 32, 58, 0.96) 35%, color-mix(in srgb, var(--c, #6d4bd8) 55%, #0a1222)); }
-.challenge-art { position: absolute; right: -6px; bottom: -6px; width: 128px; height: 128px; image-rendering: pixelated; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); pointer-events: none; }
-.challenge-info { display: flex; gap: 10px; align-items: center; }
 .challenge-info__badge { image-rendering: pixelated; flex: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)); }
-.challenge-info b { display: block; font-family: var(--font-display); font-weight: 600; font-size: 18px; }
-.challenge-info span { font-size: 12.5px; color: #c8d6f0; }
 .challenge-need { display: grid; gap: 6px; font-size: 12.5px; color: #c8d6f0; }
 .challenge-need .pk-btn { justify-self: start; }
 
 @media (max-width: 1100px) {
-  .hubview { grid-template-rows: auto auto; height: auto; min-height: 0; }
+  .hubview { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
   .city { height: 60vh; min-height: 380px; }
-  .hub-dock { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-  .dock-card--team { grid-column: 1 / -1; order: -1; }
 }
 @media (max-width: 900px) {
   .sign { padding: 0 8px 0 0; }
@@ -127,3 +92,73 @@
 .spot.is-end .sign { left: auto; right: 0; transform: none; }
 .spot.is-end:hover .sign { transform: translateY(-3px); }
 .spot.is-end .sign::after { left: auto; right: 24px; transform: rotate(45deg); }
+
+/* ---------- Lateral do Hub ---------- */
+.hub-side { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; padding: 4px; margin: -4px; scrollbar-width: thin; }
+.side-card {
+  position: relative; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; color: var(--ink);
+  border: 6px solid transparent; border-image: var(--frame) 5 fill / 10px / 4px;
+}
+.side-card__head { display: flex; align-items: center; gap: 8px; }
+.side-card__head b { font-family: var(--font-display); font-weight: 600; font-size: 16px; letter-spacing: 0.03em; }
+.side-card__meta { margin-left: auto; font-family: var(--font-lcd); font-size: 16px; color: var(--ink-muted); }
+.side-card__link { border: 0; background: none; color: var(--lens); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; padding: 0; }
+.side-card__empty { margin: 0; font-size: 13px; color: var(--ink-muted); }
+
+/* Hunt */
+.hunt-hero {
+  position: relative; display: flex; align-items: flex-end; justify-content: space-between; min-height: 72px; padding: 8px 6px 6px 12px; overflow: hidden;
+  background: linear-gradient(180deg, #7cc8f0 0%, #b5e3f7 45%, #6fd08c 46%, #4fb070 100%); box-shadow: inset 0 0 0 2px #0a1426, inset 0 0 0 4px rgba(255, 255, 255, 0.25);
+}
+.hunt-hero::after { content: ''; position: absolute; right: 22px; bottom: 6px; width: 76px; height: 14px; border-radius: 50%; background: rgba(0, 0, 0, 0.22); }
+.hunt-hero__where { position: relative; z-index: 1; display: grid; align-self: center; padding: 4px 10px 6px; color: #1c2430; border: 4px solid transparent; border-image: var(--frame-day) 5 fill / 8px; }
+.hunt-hero__region { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #3268c0; }
+.hunt-hero__where b { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 20px; }
+.hunt-hero__where .pk-num { font-family: var(--font-lcd); font-size: 15px; line-height: 14px; color: #4b5a6a; }
+.hunt-hero__mon { position: relative; z-index: 1; image-rendering: pixelated; margin-bottom: -2px; }
+.hunt-progress { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
+.hunt-progress .pk-num { font-family: var(--font-lcd); font-size: 15px; letter-spacing: 0; text-transform: none; }
+.hunt-progress i { grid-column: 1 / -1; height: 8px; background: var(--track); box-shadow: 0 0 0 2px #050a14; }
+.hunt-progress i b { display: block; height: 100%; background: linear-gradient(90deg, #36c46c, var(--good)); }
+.side-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.side-stats span {
+  display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto; column-gap: 4px; align-items: center; padding: 2px 8px 2px 2px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); background: rgba(0, 0, 0, 0.22); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+.side-stats img { grid-row: 1 / span 2; width: 26px; height: 26px; image-rendering: pixelated; }
+.side-stats b { font-family: var(--font-lcd); font-weight: 400; font-size: 20px; line-height: 17px; color: #fff; text-transform: none; letter-spacing: 0; }
+
+/* Equipe */
+.team-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.team-slot {
+  display: grid; justify-items: center; gap: 1px; padding: 2px 4px 6px; cursor: pointer; font: inherit; color: var(--ink); min-width: 0; overflow: hidden;
+  background: radial-gradient(60% 50% at 50% 35%, rgba(90, 130, 210, 0.3), transparent 75%), rgba(0, 0, 0, 0.2); border: 2px solid rgba(255, 255, 255, 0.08);
+}
+.team-slot:hover, .team-slot:focus-visible { border-color: rgba(255, 255, 255, 0.4); outline: none; }
+.team-slot.is-lead { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.team-slot.is-fainted .team-slot__icon { filter: grayscale(1) brightness(0.6); }
+.team-slot__icon { margin-top: 2px; }
+.team-slot__name, .team-slot__lvl { position: relative; z-index: 1; }
+.team-slot__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-weight: 600; font-size: 12px; }
+.team-slot__lvl { font-family: var(--font-lcd); font-size: 15px; line-height: 13px; color: var(--ink-muted); }
+.team-slot .meter { width: 100%; height: 5px; margin-top: 2px; }
+.team-slot.is-empty { display: grid; place-items: center; min-height: 52px; cursor: default; background: none; border: 2px dashed rgba(255, 255, 255, 0.12); }
+.team-slot.is-empty img { width: 28px; height: 28px; image-rendering: pixelated; filter: grayscale(1) opacity(0.35); }
+
+/* Próximo desafio */
+.side-card--challenge { flex: 1; }
+.side-card--challenge::before { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, transparent 30%, color-mix(in srgb, var(--c, #6d4bd8) 35%, transparent)); pointer-events: none; }
+.challenge { position: relative; display: flex; align-items: flex-end; gap: 6px; min-height: 88px; }
+.challenge__leader { width: 96px; height: 96px; image-rendering: pixelated; flex: none; margin: -8px -6px -4px -10px; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35)); }
+.challenge__info { display: grid; gap: 1px; align-self: center; min-width: 0; }
+.challenge__badge { width: 36px; height: 36px; image-rendering: pixelated; margin-bottom: 2px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5)); }
+.challenge__info b { font-family: var(--font-display); font-weight: 600; font-size: 18px; line-height: 21px; }
+.challenge__info span { font-size: 12.5px; }
+.challenge__team { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.challenge__mon { display: grid; justify-items: center; align-content: start; padding-bottom: 3px; overflow: hidden; background: rgba(0, 0, 0, 0.22); }
+.challenge__mon .crop { margin-top: 2px; }
+.challenge__mon .pk-num { position: relative; font-family: var(--font-lcd); font-size: 14px; line-height: 12px; color: #fff; text-shadow: 0 1px 0 #000; }
+.side-card--challenge .btn-go, .side-card--challenge .challenge-need { margin-top: auto; position: relative; }
+@media (max-width: 1100px) {
+  .hub-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); overflow: visible; margin: 0; padding: 0; }
+}
