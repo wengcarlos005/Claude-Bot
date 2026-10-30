@@ -50,6 +50,16 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
   vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
 - XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
 
+### Telas de menu sem buracos (30/10)
+- **Cabeçalho com NPC** em todas as telas de menu: sprite do personagem (Prof. Carvalho, Bill, Enfermeira Joy,
+  vendedor, cientista…), caixa de diálogo de GBA e os números principais com ícones.
+- **Conteúdo ocupa a altura toda:** colunas da mesma altura e o último painel de cada coluna se estica.
+- **Equipe:** 6 vagas grandes (vazias aparecem como "Vaga livre"), golpes em etiquetas da cor do tipo; presets ao lado.
+- **PC:** caixa de 30 espaços com os vazios desenhados, como no jogo.
+- **Mochila:** bolsos na lateral (com "Todos" e contagem); **Loja:** mostra também os itens que chegam com mais
+  insígnias (esmaecidos); **Estatísticas:** números em blocos e conquistas com barra de progresso.
+- **Detalhe do Pokémon:** 3 colunas (dados/atributos, golpes, evolução/itens/ações).
+
 ### Golpes, hunt que varre o mapa e polimento (30/10)
 - **Golpes:** até 10 conhecidos (golpes de dano do learnset, aprendidos ao subir de nível ou evoluir); 2 equipados
   no Nv 1–19, 4 no Nv 20–39 e 6 no Nv 40+. Painel no detalhe do Pokémon para equipar/tirar, modo automático e

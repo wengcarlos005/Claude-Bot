@@ -25,7 +25,6 @@ export function ResearchScreen(_: ScreenProps) {
   return (
     <div class="cols">
       <Window title="Melhorias de pesquisa">
-        <p class="small muted">Melhorias pagas em Pontos de Pesquisa (PP); as de treinador são fabricadas na Oficina. PP vêm de novas espécies, treinadores, áreas concluídas, ginásios e transferências.</p>
         <table class="table">
           <tbody>
             {[...app.data.upgrades.values()].filter((u) => u.currency !== 'money').map((u) => {

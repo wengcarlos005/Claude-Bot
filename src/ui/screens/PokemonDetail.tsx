@@ -50,7 +50,7 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
 
   return (
     <Modal title={<>{pk.shiny && <span class="pk-shiny">✦ </span>}{displayName(app.data, pk)} <span class="muted small">#{sp.id} {sp.name}</span></>} onClose={onClose} wide>
-      <div class="cols">
+      <div class="detail">
         <div class="stack">
           <div class="row">
             <Sprite id={sp.id} shiny={pk.shiny} animated size={120} />
@@ -85,6 +85,8 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
         </div>
         <div class="stack">
           <MovesPanel pk={pk} />
+        </div>
+        <div class="stack detail__side">
           <div>
             <h3>Evolução</h3>
             {sp.evolutions.length === 0 && <p class="muted small">Não evolui.</p>}

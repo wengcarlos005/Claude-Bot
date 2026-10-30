@@ -19,6 +19,7 @@ import { StatsScreen } from './screens/Stats';
 import { SettingsScreen } from './screens/Settings';
 import { OfflineModal, OfflineProgress, StarterPicker } from './screens/Modals';
 import { EvolutionScene } from './screens/Evolution';
+import { ScreenHero, hasHero } from './ScreenHero';
 
 type Icon = { item: string } | { ui: string } | { pixel: keyof typeof PIXEL_ICONS };
 const SCREENS: { id: string; label: string; icon: Icon; C: (p: ScreenProps) => preact.JSX.Element | null }[] = [
@@ -86,8 +87,11 @@ export function App({ app }: { app: GameApp }) {
             </button>
           ))}
         </nav>
-        <main class="app-main">
-          <Current go={go} />
+        <main class={`app-main ${hasHero(screen) ? 'is-menu' : ''}`}>
+          {hasHero(screen) && <ScreenHero screen={screen} />}
+          <div class="screen-body">
+            <Current go={go} />
+          </div>
         </main>
       </div>
       {!s.player.starterChosen && <StarterPicker />}

@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
-import { Bar, GenderIcon, Grade, Sprite, TypeBadge, Window, useApp } from '../components';
+import { Bar, GenderIcon, Grade, ItemIcon, Sprite, TypeBadge, Window, useApp } from '../components';
+import { uiIcon } from '../../app/assets';
 import { PokemonDetail } from './PokemonDetail';
 import { activeMember, displayName, maxHpOf, speciesOf } from '../../core/pokemon';
 import { activeMoves } from '../../core/moves';
@@ -16,11 +17,20 @@ export function PartyScreen(_: ScreenProps) {
   const lead = activeMember(s);
   const cap = levelCap(s, app.data);
   return (
-    <div class="stack">
-      <Window title={<>Equipe <span class="muted small">({s.party.length}/6 · teto de nível {cap})</span></>}>
-        <p class="small muted">O primeiro Pokémon luta primeiro; os outros entram quando ele desmaia. Quem não lutou recebe a XP da Exp. Share.</p>
-        <div class="card-grid">
-          {s.party.map((uid, i) => {
+    <div class="party-layout">
+      <Window title={<>Sua equipe <span class="muted small">teto de nível {cap}</span></>} class="grow">
+        <div class="party-grid">
+          {Array.from({ length: 6 }, (_, i) => {
+            const uid = s.party[i];
+            if (!uid) {
+              return (
+                <div key={`e${i}`} class="slot is-empty">
+                  <img src={uiIcon('ball/poke')} width={48} height={48} alt="" />
+                  <b>Vaga {i + 1} livre</b>
+                  <span class="small muted">Capture mais Pokémon ou traga um do PC.</span>
+                </div>
+              );
+            }
             const pk = s.pokemon[uid];
             const sp = speciesOf(app.data, pk.species);
             const max = maxHpOf(s, app.data, pk);
@@ -28,21 +38,28 @@ export function PartyScreen(_: ScreenProps) {
             const x1 = expForLevel(sp.growthRate, pk.level + 1);
             const evo = availableEvolutions(app.core.ctx, s, pk).length > 0;
             return (
-              <div key={uid} class={`pk-card ${lead?.uid === uid ? 'is-active' : ''} ${pk.fainted ? 'is-fainted' : ''}`} onClick={() => setOpen(uid)}>
-                <Sprite id={sp.id} shiny={pk.shiny} animated size={80} class="pk-card__sprite" />
-                <div class="pk-card__body">
-                  <div class="pk-card__name">
-                    <span>{i + 1}. {pk.shiny && <span class="pk-shiny">✦ </span>}{displayName(app.data, pk)} <GenderIcon g={pk.gender} /></span>
-                    <span class="pk-card__lvl">Nv {pk.level}</span>
-                  </div>
-                  <div class="pk-row">{sp.types.map((t) => <TypeBadge key={t} type={t} />)}<Grade grade={ivGrade(pk.ivs)} />{evo && <span class="pk-chip-btn" aria-pressed="true">Pode evoluir</span>}</div>
-                  <Bar value={pk.fainted ? 0 : pk.hp} max={max} caption="PS" label={`${Math.ceil(pk.fainted ? 0 : pk.hp)}/${max}`} />
-                  <Bar value={pk.level >= cap ? 1 : pk.xp - x0} max={pk.level >= cap ? 1 : x1 - x0} kind="xp" />
-                  <div class="pk-card__note">{activeMoves(app.data, pk).map((m) => app.data.moves.get(m)?.name ?? 'Struggle').join(' · ')}</div>
-                  {pk.heldItem && <div class="pk-card__note">Segurando: {app.data.items.get(pk.heldItem)?.name}</div>}
-                  {pk.level > cap && <div class="pk-card__note is-bad">Acima do teto: luta como Nv {cap} até a próxima insígnia.</div>}
-                </div>
-              </div>
+              <button key={uid} class={`slot ${lead?.uid === uid ? 'is-lead' : ''} ${pk.fainted ? 'is-fainted' : ''}`} onClick={() => setOpen(uid)}>
+                <span class="slot__no pk-num">{i + 1}</span>
+                {lead?.uid === uid && <span class="slot__tag">Líder</span>}
+                <span class="slot__art"><Sprite id={sp.id} shiny={pk.shiny} animated size={96} /></span>
+                <span class="slot__name">{pk.shiny && <span class="pk-shiny">✦ </span>}{displayName(app.data, pk)} <GenderIcon g={pk.gender} /></span>
+                <span class="slot__meta"><span class="pk-num">Nv {pk.level}</span>{sp.types.map((ty) => <TypeBadge key={ty} type={ty} />)}<Grade grade={ivGrade(pk.ivs)} /></span>
+                <Bar value={pk.fainted ? 0 : pk.hp} max={max} caption="PS" label={`${Math.ceil(pk.fainted ? 0 : pk.hp)}/${max}`} />
+                <Bar value={pk.level >= cap ? 1 : pk.xp - x0} max={pk.level >= cap ? 1 : x1 - x0} kind="xp" />
+                <span class="slot__moves">
+                  {activeMoves(app.data, pk).map((m) => {
+                    const mv = app.data.moves.get(m);
+                    return <span key={m} class={`move-chip type-${mv?.type ?? 'normal'}`}>{mv?.name ?? 'Struggle'}</span>;
+                  })}
+                </span>
+                {(evo || pk.heldItem || pk.level > cap) && (
+                  <span class="slot__notes">
+                    {evo && <span class="great">Pode evoluir</span>}
+                    {pk.heldItem && <span><ItemIcon id={pk.heldItem} size={20} /> {app.data.items.get(pk.heldItem)?.name}</span>}
+                    {pk.level > cap && <span class="bad">Luta como Nv {cap}</span>}
+                  </span>
+                )}
+              </button>
             );
           })}
         </div>
@@ -60,7 +77,7 @@ function Presets() {
   return (
     <Window title="Presets de equipe">
       <p class="small muted">Salve composições para objetivos diferentes (XP, captura, shiny hunting, ginásio…).</p>
-      <div class="row">
+      <div class="presets__form">
         <input placeholder="Nome do preset" value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} maxLength={20} />
         <button class="pk-btn pk-btn--primary pk-btn--sm" onClick={() => app.dispatch({ type: 'SavePreset', name }) && setName('')}>Salvar equipe atual</button>
       </div>
