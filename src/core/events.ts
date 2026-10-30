@@ -19,6 +19,7 @@ export type GameEvent =
   | { type: 'areaCleared'; areaId: string }
   | { type: 'areaUnlocked'; areaId: string }
   | { type: 'milestone'; id: string; caught: number }
+  | { type: 'achievement'; id: string; name: string; rewardPP: number }
   | { type: 'healed'; reason: 'center' | 'potion' | 'revive' }
   | { type: 'retreat'; toAreaId: string }
   | { type: 'autoBuy'; itemId: string; qty: number; cost: number }

@@ -3,6 +3,8 @@ import type { ScreenProps } from '../App';
 import { Window, duration, fmt, pct, useApp } from '../components';
 import { estimateHunt, type HuntEstimate } from '../../core/analyzer';
 import { areaUnlocked, isFarmArea } from '../../core/world';
+import { ACHIEVEMENTS } from '../../data/content/achievements';
+import { metricValue } from '../../core/systems/achievements';
 
 const LABELS: Record<string, string> = {
   battlesWon: 'Batalhas vencidas', battlesLost: 'Batalhas perdidas', wildDefeated: 'Selvagens derrotados',
@@ -64,6 +66,23 @@ export function StatsScreen(_: ScreenProps) {
           </div>
         )}
       </Window>
+      <div class="stack">
+      <Window title={<>Conquistas <span class="muted small">({s.achievements.length}/{ACHIEVEMENTS.length})</span></>}>
+        <table class="table">
+          <tbody>
+            {ACHIEVEMENTS.map((a) => {
+              const done = s.achievements.includes(a.id);
+              const v = Math.min(metricValue(s, a.metric), a.target);
+              return (
+                <tr key={a.id} class={done ? '' : 'locked'}>
+                  <td>{done ? '🏆' : '◻'} <b>{a.name}</b><div class="small muted">{a.description}</div></td>
+                  <td class="num right small">{done ? `+${a.rewardPP} PP` : `${fmt(v)}/${fmt(a.target)}`}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Window>
       <Window title="Estatísticas da conta">
         <table class="table">
           <tbody>
@@ -76,6 +95,7 @@ export function StatsScreen(_: ScreenProps) {
           </tbody>
         </table>
       </Window>
+      </div>
     </div>
   );
 }

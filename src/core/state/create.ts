@@ -18,6 +18,7 @@ export function createInitialState(data: GameData, now: number, seed: number): G
     inventory: { 'poke-ball': 10, potion: 10 },
     upgrades: {},
     milestonesClaimed: [],
+    achievements: [],
     world: { activeAreaId: firstArea, lastFarmAreaId: firstArea, areas: {} },
     exploration: { phase: 'idle', timer: 0, battle: null, lossStreak: 0, sequenceIndex: 0 },
     captureRules: [

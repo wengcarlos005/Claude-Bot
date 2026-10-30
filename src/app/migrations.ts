@@ -5,7 +5,10 @@ import { SAVE_VERSION } from '../core/state/types';
 type Migration = (s: Record<string, any>) => Record<string, any>;
 
 /** MIGRATIONS[n] converte um save da versão n para n+1. */
-const MIGRATIONS: Record<number, Migration> = {};
+const MIGRATIONS: Record<number, Migration> = {
+  // v1 → v2: conquistas.
+  1: (s) => ({ ...s, achievements: [] }),
+};
 
 export function migrate(raw: Record<string, any>): GameState {
   let s = raw;

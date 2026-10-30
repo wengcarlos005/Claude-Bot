@@ -2,7 +2,7 @@
 import type { Stats, TypeId } from '../../data/types';
 import type { RngState } from '../engine/rng';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const MAX_PARTY = 6;
 
 export interface OwnedPokemon {
@@ -177,6 +177,8 @@ export interface GameState {
   inventory: Record<string, number>;
   upgrades: Record<string, number>;
   milestonesClaimed: string[];
+  /** Conquistas obtidas (desde a versão 2 do save). */
+  achievements: string[];
   world: {
     activeAreaId: string;
     /** Última área de farm (para onde a equipe volta após perder em ginásio/liga). */

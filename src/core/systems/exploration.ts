@@ -14,6 +14,7 @@ import { attack, roundOrder } from './battle';
 import { bestIvTotal, gainAffinity, registerCaught, registerSeen, shouldAutoTransfer, transferPokemon } from './collection';
 import { autoBuy, autoHeal, ballMultiplier } from './items';
 import { awardDefeat, creditWin } from './progression';
+import { checkAchievements } from './achievements';
 
 const METHOD_SHARE: Record<string, number> = {
   walk: 70, surf: 25, 'old-rod': 6, 'good-rod': 8, 'super-rod': 10, 'rock-smash': 8, headbutt: 8,
@@ -348,6 +349,7 @@ function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, b
   state.exploration.lossStreak = 0;
   ctx.emit({ type: 'battleWon', kind: 'capture', money: 0, xp });
   checkAreaCleared(ctx, state, area);
+  checkAchievements(ctx, state);
   endBattle(state, bonuses, area);
 }
 
@@ -410,6 +412,7 @@ function winBattle(ctx: GameContext, state: GameState, area: ResolvedArea, bonus
     state.exploration.sequenceIndex++;
   }
   checkAreaCleared(ctx, state, area);
+  checkAchievements(ctx, state);
   endBattle(state, bonuses, area);
 }
 
@@ -480,6 +483,7 @@ function finishSequence(ctx: GameContext, state: GameState, area: ResolvedArea):
   state.exploration.sequenceIndex = 0;
   setActiveArea(state, state.world.lastFarmAreaId);
   announceUnlocks(ctx, state, before);
+  checkAchievements(ctx, state);
 }
 
 /** Troca a área ativa (sem validação — use o comando SelectArea para entradas do jogador). */

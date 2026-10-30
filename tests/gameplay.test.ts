@@ -148,3 +148,14 @@ describe('regras de captura e Auto Manager', () => {
     void tickExploration;
   });
 });
+
+describe('conquistas', () => {
+  it('são concedidas uma vez, com PP', async () => {
+    const { core, state, data } = await newCore(6);
+    core.dispatch({ type: 'ChooseStarter', species: 'charmander' });
+    simulate(data, state, 10 * 60_000, { now: () => Date.UTC(2026, 0, 1, 12) });
+    expect(state.achievements).toContain('win-10');
+    expect(state.achievements).toContain('cap-1');
+    expect(new Set(state.achievements).size).toBe(state.achievements.length);
+  });
+});

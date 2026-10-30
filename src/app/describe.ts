@@ -53,6 +53,8 @@ export function describeEvent(data: GameData, state: GameState, e: GameEvent): D
       return { text: `Área concluída: ${data.areas.get(e.areaId)?.name}. +5 PP`, tone: 'good', toast: true };
     case 'areaUnlocked':
       return { text: `Nova área liberada: ${data.areas.get(e.areaId)?.name}.`, tone: 'good', toast: true };
+    case 'achievement':
+      return { text: `🏆 Conquista: ${e.name} (+${e.rewardPP} PP)`, tone: 'great', toast: true };
     case 'milestone':
       return { text: `📖 Marco da Pesquisa: ${e.caught} espécies! Recompensas recebidas.`, tone: 'great', toast: true };
     case 'healed':

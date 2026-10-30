@@ -47,3 +47,17 @@ describe('persistência', () => {
     expect((await decodeEnvelope(env)).meta.saveVersion).toBe(state.meta.saveVersion);
   });
 });
+
+describe('migrações', () => {
+  it('v1 → v2 adiciona conquistas sem perder dados', async () => {
+    const { core, state } = await newCore(2);
+    core.dispatch({ type: 'ChooseStarter', species: 'squirtle' });
+    const v1: Record<string, any> = structuredClone(state);
+    delete v1.achievements;
+    v1.meta.saveVersion = 1;
+    const migrated = migrate(v1);
+    expect(migrated.meta.saveVersion).toBe(2);
+    expect(migrated.achievements).toEqual([]);
+    expect(migrated.party).toEqual(state.party);
+  });
+});
