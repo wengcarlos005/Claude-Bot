@@ -194,7 +194,8 @@ function startWildBattle(
     state.hunt.shinies++;
   }
   const rule = matchCaptureRule(ctx, state, foe, legendary);
-  if (rule) b.capture = { ball: rule.ball, throws: 0, maxThrows: bonuses.maxThrows, ruleId: rule.id };
+  // Shiny: tenta até acabarem as bolas (máx. 30) — perder um shiny por falta de tentativas é frustrante demais.
+  if (rule) b.capture = { ball: rule.ball, throws: 0, maxThrows: shiny ? Math.max(30, bonuses.maxThrows) : bonuses.maxThrows, ruleId: rule.id };
   state.exploration.battle = b;
   state.exploration.phase = 'battle';
   ctx.emit({ type: 'encounter', species, level, shiny, kind: 'wild', legendary });

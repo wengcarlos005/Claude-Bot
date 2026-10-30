@@ -15,7 +15,12 @@ export function ExploreScreen({ go }: ScreenProps) {
     <div class="cols">
       <div class="stack">
         <Window
-          title={<>{area.name} <span class="muted small">Nv. {area.levelRange[0]}–{area.levelRange[1]}</span></>}
+          title={
+            <>
+              {area.name} <span class="muted small">Nv. {area.levelRange[0]}–{area.levelRange[1]}</span>
+              {area.statMult > 1 && <span class="bad small" title="Multiplicador de atributos dos oponentes nesta área"> · Tier ×{area.statMult.toFixed(2)}</span>}
+            </>
+          }
           actions={<button class="btn btn-sm" onClick={() => go('map')}>Trocar área</button>}
         >
           <Scene />

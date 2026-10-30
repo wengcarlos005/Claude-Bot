@@ -69,13 +69,13 @@ export function botDecide(core: GameCore): void {
   // Pós-Campeão: farm de Afinidade (captura tudo e transfere duplicatas), como um jogador de fim de jogo faria.
   if (state.player.champions.length > 0) {
     const any = state.captureRules.find((r) => r.when === 'any');
-    if (any && (!any.enabled || any.ball !== ball)) {
+    if (any && (!any.enabled || any.ball !== 'poke-ball')) {
       any.enabled = true;
-      any.ball = ball;
+      any.ball = 'poke-ball';
       any.fallback = true;
       state.settings.autoTransfer = true;
     }
-    if ((state.inventory[ball] ?? 0) < 60 && state.player.money > price * 200) core.dispatch({ type: 'BuyItem', itemId: ball, qty: 60 });
+    if ((state.inventory['poke-ball'] ?? 0) < 100 && state.player.money > 200 * 500) core.dispatch({ type: 'BuyItem', itemId: 'poke-ball', qty: 100 });
   }
   if (state.upgrades['auto-buyer'] && !state.settings.autoBuy) core.dispatch({ type: 'SetSettings', settings: { autoBuy: true, autoBuyItem: ball } });
 

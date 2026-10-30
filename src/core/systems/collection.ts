@@ -62,7 +62,8 @@ export function transferValue(ctx: GameContext, pk: OwnedPokemon): { money: numb
   const shinyMult = pk.shiny ? 10 : 1;
   return {
     money: Math.round((10 + pk.level * 3 + (255 - sp.captureRate) / 2) * shinyMult),
-    research: (1 + (sp.captureRate <= 45 ? 2 : 0) + (rare ? 20 : 0)) * (pk.shiny ? 5 : 1),
+    // Duplicatas comuns rendem só ₽ (evita farm de PP com a regra "qualquer Pokémon"); PP vem de raros/lendários/shinies.
+    research: (sp.captureRate <= 45 ? 2 : 0) + (rare ? 20 : 0) + (pk.shiny ? 10 : 0),
   };
 }
 

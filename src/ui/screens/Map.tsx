@@ -65,7 +65,7 @@ export function MapScreen({ go }: ScreenProps) {
               return (
                 <tr key={a.id} class={`${open || won ? '' : 'locked'} ${current ? 'current' : ''}`}>
                   <td>{KIND_ICON[a.kind]} {a.name}{a.legendaries?.length ? ' ⚡' : ''}</td>
-                  <td class="num">{a.levelRange[0]}–{a.levelRange[1]}</td>
+                  <td class="num">{a.levelRange[0]}–{a.levelRange[1]}{a.statMult > 1 && <span class="bad small"> ×{a.statMult.toFixed(2)}</span>}</td>
                   <td class="small">{status}</td>
                   <td class="small num">
                     {est

@@ -129,6 +129,7 @@ Lista ordenada e editável. A **primeira regra** que combina com o selvagem defi
 está com **≤ 50% dos PS** (Quick Ball e Master Ball arremessam no primeiro turno).
 - Há até `3` tentativas (+1 por nível de "Persistência").
 - Se as tentativas acabarem, a batalha segue normalmente. Lendários **fogem** e podem reaparecer.
+- **Shinies** têm até 30 tentativas, enquanto houver bolas, e nunca são nocauteados enquanto houver tentativas.
 - Capturar também dá XP (como um nocaute), mas não dá dinheiro.
 - A **reserva** usa a bola mais barata disponível quando a da regra acaba, e nunca a Master Ball.
 
@@ -166,7 +167,7 @@ A chance base é de **1/8192** por encontro selvagem. "Olhar Treinado" dá +25% 
 - **Maestria (uso):** vitórias como Pokémon ativo, por espécie. Os níveis 1–10 exigem de 25 a 16.000 vitórias, e cada
   nível dá **+1% de atributos e +2% de XP**. O bônus é limitado (+10%/+20%) para não tornar uma espécie obrigatória.
 - **Transferência ao Professor:** remove o Pokémon e dá `₽ = (10 + 3·Nv + (255 − taxaCaptura)/2)` (×10 se shiny) e
-  `PP = 1` (+2 se raro, +20 se lendário; ×5 se shiny).
+  `PP = 2 se raro (taxa ≤ 45) + 20 se lendário + 10 se shiny`. Duplicatas comuns rendem só ₽.
   - Pode ser automática no Auto Manager, para duplicatas que não sejam shiny, não estejam protegidas, não superem a
     melhor cópia em IVs e fiquem abaixo da nota protegida.
   - Ações em massa pedem confirmação.
