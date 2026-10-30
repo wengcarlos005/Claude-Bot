@@ -50,6 +50,11 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
   vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
 - XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
 
+### Hub com lateral (30/10)
+- A cidade ocupa sozinha a área principal (moldura de árvores maior, todas as placas visíveis) e hunt, equipe e próximo
+  desafio ficam numa **lateral à direita**, fora do mapa: cena da rota com o líder da equipe e barra de conclusão da
+  área, 4 métricas com ícones, 6 vagas da equipe com PS, e o líder do ginásio com a insígnia e o time dele com níveis.
+
 ### Telas de menu sem buracos (30/10)
 - **Cabeçalho com NPC** em todas as telas de menu: sprite do personagem (Prof. Carvalho, Bill, Enfermeira Joy,
   vendedor, cientista…), caixa de diálogo de GBA e os números principais com ícones.

@@ -1,13 +1,13 @@
 // Hub: Celadon City (mapa real de FireRed) em tela cheia. Cada prédio leva a uma parte do jogo; o que ainda não
-// existe aparece como "Em breve". A equipe passeia pela praça e os painéis flutuam sobre a cidade.
+// existe aparece como "Em breve". A equipe passeia pela praça; hunt, equipe e próximo desafio ficam na lateral.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
-import { CroppedSprite, duration, fmt, useApp } from '../components';
-import { badgeSprite, itemSprite, trainerSprite } from '../../app/assets';
+import { CroppedSprite, Sprite, duration, fmt, useApp } from '../components';
+import { badgeSprite, itemSprite, trainerSprite, uiIcon } from '../../app/assets';
 import { DEFAULT_AVATAR } from '../../data/content/avatars';
 import type { ResolvedArea } from '../../data/registry';
 import { activeMember, maxHpOf, speciesOf } from '../../core/pokemon';
-import { areaUnlocked, checkRequirement } from '../../core/world';
+import { areaUnlocked, checkRequirement, winsToClear } from '../../core/world';
 import { requirementText } from '../text';
 import { Cell, renderLayout, type RenderedMap } from '../../app/pret';
 import { PmdSprite } from '../field/MapScene';
@@ -15,7 +15,7 @@ import { directionRow } from '../../app/pmd';
 import { Meter } from '../hub/Hub';
 
 const CITY = 'frlg:CeladonCity';
-const PAD = 5;
+const PAD = 10;
 
 interface Spot {
   id: string;
@@ -42,7 +42,7 @@ const SPOTS: Spot[] = [
   { id: 'arena', x: 27, y: 4.6, w: 7, h: 7.4, title: 'Arena PvP', sub: 'Batalhe contra jogadores', icon: 'vs-seeker', soon: true },
   { id: 'market', x: 31, y: 17.4, w: 7, h: 4.6, title: 'Mercado Global', sub: 'Negocie com treinadores', icon: 'nugget', soon: true },
   { id: 'guild', x: 24, y: 16, w: 6, h: 3.2, title: 'Guilda', sub: 'Evolua em grupo', icon: 'comet-shard', soon: true },
-  { id: 'hunt', x: 54, y: 12.4, w: 6, h: 4, title: 'Áreas de Caça', sub: 'Saída para as rotas', icon: 'town-map', go: 'map', end: true },
+  { id: 'hunt', x: 45.5, y: 12, w: 4.5, h: 3.4, title: 'Áreas de Caça', sub: 'Saída para as rotas', icon: 'town-map', go: 'map', end: true },
 ];
 /** Praça da fonte, onde a equipe passeia. */
 const PLAZA = { x0: 9, y0: 17, x1: 18, y1: 24 };
@@ -81,11 +81,11 @@ export function HubScreen({ go }: ScreenProps) {
           <div class="mapscene__loading">{failed ? 'Não foi possível carregar a cidade agora.' : <><span class="spinner" />Chegando em Celadon…</>}</div>
         </div>
       )}
-      <div class="hub-dock">
+      <aside class="hub-side">
         <HuntCard go={go} />
         <TeamCard go={go} />
         <ChallengeCard area={next} go={go} />
-      </div>
+      </aside>
     </div>
   );
 }
@@ -218,24 +218,36 @@ function HuntCard({ go }: ScreenProps) {
   const lead = activeMember(s);
   const h = s.hunt;
   const hours = Math.max(h.durationMs, 60_000) / 3600_000;
+  const need = winsToClear(area);
+  const wins = Math.min(s.world.areas[area.id]?.wins ?? 0, need);
+  const cleared = !!s.world.areas[area.id]?.cleared;
   return (
-    <section class="dock-card dock-card--hunt">
-      <header class="dock-card__head">
+    <section class="side-card side-card--hunt">
+      <header class="side-card__head">
         <span class="live-dot" />
         <b>Hunt ativa</b>
-        <span class="dock-card__meta pk-num">{duration(h.durationMs)}</span>
+        <span class="side-card__meta pk-num">{duration(h.durationMs)}</span>
       </header>
-      <div class="hunt-mini">
-        {lead && <CroppedSprite id={speciesOf(app.data, lead.species).id} shiny={lead.shiny} box={56} />}
-        <div class="hunt-mini__where">
+      <div class="hunt-hero">
+        <div class="hunt-hero__where">
+          <span class="hunt-hero__region">{app.data.regionById.get(area.regionId)!.name}</span>
           <b>{area.name}</b>
-          <span>{app.data.regionById.get(area.regionId)!.name} · Nv {area.levelRange[0]}–{area.levelRange[1]}</span>
+          <span class="pk-num">Nv {area.levelRange[0]}–{area.levelRange[1]}</span>
         </div>
+        {lead && <Sprite id={speciesOf(app.data, lead.species).id} shiny={lead.shiny} animated size={80} class="hunt-hero__mon" />}
       </div>
-      <div class="mini-stats">
-        <span><b class="pk-num">{fmt(h.xp / hours)}</b>XP/h</span>
-        <span><b class="pk-num">{fmt((h.money - (h.spent ?? 0)) / hours)}</b>₽/h</span>
-        <span><b class="pk-num">{fmt(h.captures)}</b>capturas</span>
+      {need > 0 && (
+        <div class="hunt-progress">
+          <span>{cleared ? 'Área concluída' : 'Concluir a área'}</span>
+          <span class="pk-num">{wins}/{need}</span>
+          <i><b style={{ width: `${(wins / need) * 100}%` }} /></i>
+        </div>
+      )}
+      <div class="side-stats">
+        <span><img src={uiIcon('medicine/rare-candy')} alt="" /><b class="pk-num">{fmt(h.xp / hours)}</b>XP/h</span>
+        <span><img src={uiIcon('valuable-item/relic-gold')} alt="" /><b class="pk-num">{fmt((h.money - (h.spent ?? 0)) / hours)}</b>₽/h</span>
+        <span><img src={uiIcon('ball/poke')} alt="" /><b class="pk-num">{fmt(h.captures)}</b>capturas</span>
+        <span><img src={uiIcon('key-item/vs-recorder')} alt="" /><b class="pk-num">{fmt(h.wins)}</b>vitórias</span>
       </div>
       <button class="btn-go" onClick={() => go('explore')}>Ir para a hunt</button>
     </section>
@@ -246,19 +258,22 @@ function TeamCard({ go }: ScreenProps) {
   const app = useApp();
   const s = app.state;
   return (
-    <section class="dock-card dock-card--team">
-      <header class="dock-card__head">
-        <b>Equipe atual</b>
-        <button class="dock-card__link" onClick={() => go('party')}>Gerenciar</button>
+    <section class="side-card side-card--team">
+      <header class="side-card__head">
+        <b>Equipe</b>
+        <span class="side-card__meta pk-num">{s.party.length}/6</span>
+        <button class="side-card__link" onClick={() => go('party')}>Gerenciar</button>
       </header>
-      <div class="team-cards">
+      <div class="team-grid">
         {Array.from({ length: 6 }, (_, i) => {
           const pk = s.party[i] ? s.pokemon[s.party[i]] : null;
-          if (!pk) return <span key={i} class="team-card is-empty" />;
+          if (!pk) return <span key={i} class="team-slot is-empty"><img src={uiIcon('ball/poke')} alt="" /></span>;
+          const sp = speciesOf(app.data, pk.species);
           return (
-            <button key={i} class={`team-card ${pk.fainted ? 'is-fainted' : ''} ${i === 0 ? 'is-lead' : ''}`} onClick={() => go('party')}>
-              <CroppedSprite id={speciesOf(app.data, pk.species).id} shiny={pk.shiny} box={64} />
-              <span class="team-card__lvl pk-num">Nv {pk.level}</span>
+            <button key={i} class={`team-slot ${pk.fainted ? 'is-fainted' : ''} ${i === 0 ? 'is-lead' : ''}`} onClick={() => go('party')} title={sp.name}>
+              <CroppedSprite id={sp.id} shiny={pk.shiny} box={60} class="team-slot__icon" />
+              <span class="team-slot__name">{pk.nickname || sp.name}</span>
+              <span class="team-slot__lvl pk-num">Nv {pk.level}</span>
               <Meter value={pk.fainted ? 0 : pk.hp} max={maxHpOf(s, app.data, pk)} kind="hp" />
             </button>
           );
@@ -275,9 +290,9 @@ function ChallengeCard({ area, go }: { area: ResolvedArea | null; go: (id: strin
   const s = app.state;
   if (!area) {
     return (
-      <section class="dock-card dock-card--challenge">
-        <header class="dock-card__head"><b>Próximo desafio</b></header>
-        <p class="dock-card__empty">Todas as Ligas vencidas. Complete a Pokédex!</p>
+      <section class="side-card side-card--challenge">
+        <header class="side-card__head"><b>Próximo desafio</b></header>
+        <p class="side-card__empty">Todas as Ligas vencidas. Complete a Pokédex!</p>
       </section>
     );
   }
@@ -287,19 +302,32 @@ function ChallengeCard({ area, go }: { area: ResolvedArea | null; go: (id: strin
   const missing = area.unlock.filter((r) => !checkRequirement(s, r));
   const gyms = app.data.regions.flatMap((r) => r.areas.map((a) => app.data.areas.get(a.id)!)).filter((a) => a.gym);
   const gymIndex = gyms.indexOf(area);
+  const lvl = (n: number) => Math.round(region.levelOffset + n * region.levelScale);
   return (
-    <section class={`dock-card dock-card--challenge type-${area.gym?.type ?? 'dragon'}`}>
-      <img class="challenge-art" src={leaderSprite(leader.name)} alt="" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')} />
-      <header class="dock-card__head">
+    <section class={`side-card side-card--challenge type-${area.gym?.type ?? 'dragon'}`}>
+      <header class="side-card__head">
         <b>Próximo desafio</b>
-        <span class="dock-card__meta">{region.name}</span>
+        <span class="side-card__meta">{region.name}</span>
       </header>
-      <div class="challenge-info">
-        {area.gym && gymIndex >= 0 && <img class="challenge-info__badge" src={badgeSprite(gymIndex + 1)} width={34} height={34} alt="" />}
-        <div>
+      <div class="challenge">
+        <img class="challenge__leader" src={leaderSprite(leader.name)} alt="" onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')} />
+        <div class="challenge__info">
+          {area.gym && gymIndex >= 0 && <img class="challenge__badge" src={badgeSprite(gymIndex + 1)} alt="" />}
           <b>{area.gym ? area.gym.badgeName : 'Liga Pokémon'}</b>
-          <span>{leader.name} · {area.name}</span>
+          <span>{leader.name}</span>
+          <span class="muted">{area.name}</span>
         </div>
+      </div>
+      <div class="challenge__team">
+        {leader.team.map((m, i) => {
+          const sp = speciesOf(app.data, m.species);
+          return (
+            <span key={i} class="challenge__mon" title={sp.name}>
+              <CroppedSprite id={sp.id} box={52} />
+              <span class="pk-num">Nv {lvl(m.level)}</span>
+            </span>
+          );
+        })}
       </div>
       {open ? (
         <button class="btn-go" onClick={() => { app.dispatch({ type: 'SelectArea', areaId: area.id }); go('explore'); }}>Desafiar</button>
