@@ -27,7 +27,7 @@ export const TYPE_NAMES: Record<TypeId, string> = {
 };
 
 export function TypeBadge({ type }: { type: TypeId }) {
-  return <span class={`type type-${type}`}>{TYPE_NAMES[type]}</span>;
+  return <span class={`pk-type pk-type--${type}`}>{TYPE_NAMES[type]}</span>;
 }
 
 export function Sprite(props: { id: number; shiny?: boolean; back?: boolean; animated?: boolean; size?: number; class?: string; title?: string }) {
@@ -36,7 +36,7 @@ export function Sprite(props: { id: number; shiny?: boolean; back?: boolean; ani
   const src = failed ? staticFallback(props.id, view, props.shiny) : pokemonSprite(props.id, { view, shiny: props.shiny, animated: props.animated });
   return (
     <img
-      class={`sprite ${props.class ?? ''}`}
+      class={`pk-sprite ${props.class ?? ''}`}
       src={src}
       width={props.size ?? 96}
       height={props.size ?? 96}
@@ -48,6 +48,18 @@ export function Sprite(props: { id: number; shiny?: boolean; back?: boolean; ani
         else (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
       }}
     />
+  );
+}
+
+/**
+ * Sprite em escala 1:1 (nítido) recortado no centro: os sprites de 96px têm muita margem transparente, e reduzi-los
+ * borra o pixel art. `box` é o tamanho visível do recorte.
+ */
+export function CroppedSprite(props: { id: number; shiny?: boolean; box: number; class?: string; title?: string; animated?: boolean }) {
+  return (
+    <span class="crop" style={{ '--crop': `${props.box}px` }}>
+      <Sprite id={props.id} shiny={props.shiny} size={96} class={props.class} title={props.title} animated={props.animated} />
+    </span>
   );
 }
 
@@ -65,27 +77,35 @@ export function ItemIcon({ id, sprite, size = 24 }: { id: string; sprite?: strin
   );
 }
 
-export function Bar({ value, max, kind = 'hp', label }: { value: number; max: number; kind?: 'hp' | 'xp' | 'progress'; label?: string }) {
+/** StatBar do Design System: PS (verde/amarelo/vermelho por faixa), XP ou progresso. `label` aparece acima, em LCD. */
+export function Bar({ value, max, kind = 'hp', label, caption }: { value: number; max: number; kind?: 'hp' | 'xp' | 'progress'; label?: string; caption?: string }) {
   const r = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
-  const color = kind !== 'hp' ? '' : r > 0.5 ? 'hp-high' : r > 0.2 ? 'hp-mid' : 'hp-low';
+  const tone = kind !== 'hp' ? ` pk-bar--${kind}` : r > 0.5 ? '' : r > 0.2 ? ' pk-bar--mid' : ' pk-bar--low';
+  const bar = (
+    <div class={`pk-bar${tone}`} role="progressbar" aria-valuenow={Math.round(r * 100)} aria-valuemin={0} aria-valuemax={100}>
+      <div class="pk-bar__fill" style={{ '--pk-value': `${r * 100}%` }} />
+    </div>
+  );
+  if (!label && !caption) return bar;
   return (
-    <div class={`bar bar-${kind}`} role="progressbar" aria-valuenow={Math.round(r * 100)} aria-valuemin={0} aria-valuemax={100}>
-      <div class={`bar-fill ${color}`} style={{ width: `${r * 100}%` }} />
-      {label && <span class="bar-label">{label}</span>}
+    <div>
+      <div class="pk-bar__label"><span>{caption ?? ''}</span><span>{label ?? ''}</span></div>
+      {bar}
     </div>
   );
 }
 
+/** Screen do Design System: painel com moldura onde ficam os dados. */
 export function Window({ title, children, actions, class: cls }: { title?: ComponentChildren; children: ComponentChildren; actions?: ComponentChildren; class?: string }) {
   return (
-    <section class={`window ${cls ?? ''}`}>
+    <section class={`pk-screen ${cls ?? ''}`}>
       {(title || actions) && (
-        <header class="window-head">
-          <h2>{title}</h2>
-          {actions && <div class="window-actions">{actions}</div>}
+        <header class="pk-screen__head">
+          <h2 class="pk-screen__title">{title}</h2>
+          {actions && <div class="pk-row">{actions}</div>}
         </header>
       )}
-      <div class="window-body">{children}</div>
+      <div class="pk-screen__body">{children}</div>
     </section>
   );
 }
@@ -93,16 +113,16 @@ export function Window({ title, children, actions, class: cls }: { title?: Compo
 export function Modal({ title, onClose, children, wide }: { title: ComponentChildren; onClose?: () => void; children: ComponentChildren; wide?: boolean }) {
   return (
     <div class="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
-      <div class={`modal window ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true">
-        <header class="window-head">
-          <h2>{title}</h2>
+      <div class={`pk-modal ${wide ? 'pk-modal--wide' : ''}`} role="dialog" aria-modal="true">
+        <header class="pk-modal__head">
+          <h2 class="pk-modal__title">{title}</h2>
           {onClose && (
-            <button class="btn btn-ghost" onClick={onClose} aria-label="Fechar">
-              ✕
+            <button class="pk-btn pk-btn--ghost pk-btn--sm pk-modal__close" onClick={onClose}>
+              Fechar
             </button>
           )}
         </header>
-        <div class="window-body">{children}</div>
+        <div class="pk-modal__body">{children}</div>
       </div>
     </div>
   );
@@ -114,7 +134,7 @@ export function GenderIcon({ g }: { g: OwnedPokemon['gender'] }) {
 }
 
 export function Grade({ grade }: { grade: string }) {
-  return <span class={`grade grade-${grade}`} title="Qualidade (soma de IVs)">{grade}</span>;
+  return <span class={`pk-grade pk-grade--${grade}`} title="Qualidade (soma de IVs)">{grade}</span>;
 }
 
 export function Empty({ children }: { children: ComponentChildren }) {

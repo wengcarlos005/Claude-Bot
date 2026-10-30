@@ -1,14 +1,17 @@
 import { render } from 'preact';
 import { GameApp } from './app/GameApp';
 import { App } from './ui/App';
-import './ui/styles.css';
+import './ui/styles/tokens.css';
+import './ui/styles/components.css';
+import './ui/styles/app.css';
 
 const root = document.getElementById('root')!;
 render(<div class="loading">Carregando Pokémon Idle…</div>, root);
 
 try {
   const theme = localStorage.getItem('pkidle:theme');
-  if (theme) document.documentElement.dataset.theme = theme;
+  const legacy: Record<string, string> = { dark: 'noite', light: 'dia' };
+  if (theme) document.documentElement.dataset.theme = legacy[theme] ?? theme;
 } catch {
   /* armazenamento indisponível */
 }

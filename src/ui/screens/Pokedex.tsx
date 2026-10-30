@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
-import { Modal, Sprite, TypeBadge, Window, useApp } from '../components';
+import { CroppedSprite, Modal, Sprite, TypeBadge, Window, useApp } from '../components';
 import { conditionText } from '../text';
 import { STAT_KEYS } from '../../data/types';
 import { speciesOf } from '../../core/pokemon';
@@ -25,28 +25,26 @@ export function PokedexScreen(_: ScreenProps) {
   const shiny = list.filter((sp) => s.pokedex[sp.key]?.shinyCaught).length;
   return (
     <Window
-      title={<>Pokédex <span class="muted small">capturados {caught}/{list.length} · vistos {seen} · ✨ {shiny}</span></>}
+      title={<>Pokédex <span class="muted small">capturados {caught}/{list.length} · vistos {seen} · shiny {shiny}</span></>}
       actions={
-        <div class="tabs">
+        <div class="pk-tabs" role="tablist">
           {DEXES.map((x) => (
-            <button key={x.id} class={`tab ${x.id === dex ? 'active' : ''}`} onClick={() => setDex(x.id)}>{x.name}</button>
+            <button key={x.id} class="pk-tab" role="tab" aria-selected={x.id === dex} onClick={() => setDex(x.id)}>{x.name}</button>
           ))}
         </div>
       }
     >
-      <div class="grid-mons">
+      <div class="pk-tiles">
         {list.map((sp) => {
           const e = s.pokedex[sp.key];
           const state = e?.caught ? 'caught' : e?.seen ? 'seen' : 'unseen';
           return (
-            <div key={sp.key} class={`mon-cell dex-cell ${state}`} onClick={() => e?.seen && setOpen(sp.key)} title={e?.seen ? sp.name : '???'}>
-              <div class="badges">
-                <span class="dex-num">#{String(sp.id).padStart(4, '0')}</span>
-                <span>{e?.shinyCaught ? '✨' : e?.caught ? '◓' : ''}</span>
-              </div>
-              <Sprite id={sp.id} size={64} />
-              <span>{e?.seen ? sp.name : '???'}</span>
-            </div>
+            <button key={sp.key} class={`pk-tile dex-${state} ${state === 'unseen' ? 'is-unseen' : ''}`} onClick={() => e?.seen && setOpen(sp.key)} title={e?.seen ? sp.name : 'Ainda não visto'}>
+              <span class="pk-tile__no">#{String(sp.id).padStart(4, '0')}</span>
+              <span class={`pk-tile__mark ${e?.shinyCaught ? 'is-shiny' : 'is-caught'}`}>{e?.shinyCaught ? '✦' : e?.caught ? '◓' : ''}</span>
+              <CroppedSprite id={sp.id} box={72} class={state === 'unseen' ? 'is-silhouette' : state === 'seen' ? 'is-grey' : ''} />
+              <span class="pk-tile__name">{e?.seen ? sp.name : '???'}</span>
+            </button>
           );
         })}
       </div>

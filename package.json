@@ -13,7 +13,8 @@
     "build:data": "tsx scripts/build-data/index.ts",
     "sprites:download": "tsx scripts/download-sprites.ts",
     "sim": "tsx scripts/sim/index.ts",
-    "e2e": "node scripts/e2e-smoke.mjs"
+    "e2e": "node scripts/e2e-smoke.mjs",
+    "build:tokens": "tsx scripts/build-tokens.ts"
   },
   "dependencies": {
     "@preact/signals": "^2.11.4",

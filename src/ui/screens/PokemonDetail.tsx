@@ -48,7 +48,7 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
   const mas = masteryLevel(s, pk.species);
 
   return (
-    <Modal title={<>{pk.shiny && '✨ '}{displayName(app.data, pk)} <span class="muted small">#{sp.id} {sp.name}</span></>} onClose={onClose} wide>
+    <Modal title={<>{pk.shiny && <span class="pk-shiny">✦ </span>}{displayName(app.data, pk)} <span class="muted small">#{sp.id} {sp.name}</span></>} onClose={onClose} wide>
       <div class="cols">
         <div class="stack">
           <div class="row">
@@ -106,7 +106,7 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
               return (
                 <div key={e.into + JSON.stringify(e.conditions)} class="row spread small">
                   <span>→ <b>{into.name}</b>: {e.special === 'shed' ? 'surge junto na evolução (precisa de 1 Poké Ball)' : e.conditions.map((c) => conditionText(app.data, c)).join(' + ')}</span>
-                  {ok && <button class="btn btn-sm btn-gold" onClick={() => app.dispatch({ type: 'Evolve', uid, into: e.into })}>Evoluir</button>}
+                  {ok && <button class="pk-btn pk-btn--sm pk-btn--gold" onClick={() => app.dispatch({ type: 'Evolve', uid, into: e.into })}>Evoluir</button>}
                 </div>
               );
             })}
@@ -132,7 +132,7 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
               <h3>Usar item</h3>
               <div class="row">
                 {usable.map((i) => (
-                  <button key={i} class="btn btn-sm" onClick={() => app.dispatch({ type: 'UseItem', itemId: i, uid })} title={app.data.items.get(i)?.description}>
+                  <button key={i} class="pk-btn pk-btn--sm" onClick={() => app.dispatch({ type: 'UseItem', itemId: i, uid })} title={app.data.items.get(i)?.description}>
                     {app.data.items.get(i)?.name} ×{s.inventory[i]}
                   </button>
                 ))}
@@ -144,19 +144,19 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
             <div class="row">
               {inParty ? (
                 <>
-                  <button class="btn btn-sm" disabled={idx === 0} onClick={() => move(-1)}>▲ Subir</button>
-                  <button class="btn btn-sm" disabled={idx === s.party.length - 1} onClick={() => move(1)}>▼ Descer</button>
-                  <button class="btn btn-sm" disabled={idx === 0} onClick={() => app.dispatch({ type: 'SetParty', uids: [uid, ...s.party.filter((u) => u !== uid)] })}>Tornar líder</button>
-                  <button class="btn btn-sm" disabled={s.party.length <= 1} onClick={() => app.dispatch({ type: 'SetParty', uids: s.party.filter((u) => u !== uid) })}>Mover p/ PC</button>
+                  <button class="pk-btn pk-btn--sm" disabled={idx === 0} onClick={() => move(-1)}>▲ Subir</button>
+                  <button class="pk-btn pk-btn--sm" disabled={idx === s.party.length - 1} onClick={() => move(1)}>▼ Descer</button>
+                  <button class="pk-btn pk-btn--sm" disabled={idx === 0} onClick={() => app.dispatch({ type: 'SetParty', uids: [uid, ...s.party.filter((u) => u !== uid)] })}>Tornar líder</button>
+                  <button class="pk-btn pk-btn--sm" disabled={s.party.length <= 1} onClick={() => app.dispatch({ type: 'SetParty', uids: s.party.filter((u) => u !== uid) })}>Mover p/ PC</button>
                 </>
               ) : (
-                <button class="btn btn-sm btn-primary" disabled={s.party.length >= MAX_PARTY} onClick={() => app.dispatch({ type: 'SetParty', uids: [...s.party, uid] })}>
+                <button class="pk-btn pk-btn--sm pk-btn--primary" disabled={s.party.length >= MAX_PARTY} onClick={() => app.dispatch({ type: 'SetParty', uids: [...s.party, uid] })}>
                   Adicionar à equipe
                 </button>
               )}
-              <button class="btn btn-sm" onClick={() => app.dispatch({ type: 'ToggleLock', uid })}>{pk.locked ? '🔒 Protegido' : '🔓 Proteger'}</button>
+              <button class="pk-btn pk-btn--sm" onClick={() => app.dispatch({ type: 'ToggleLock', uid })}>{pk.locked ? 'Protegido' : 'Proteger'}</button>
               <button
-                class="btn btn-sm"
+                class="pk-btn pk-btn--sm"
                 onClick={() => {
                   const name = prompt('Apelido (vazio para remover):', pk.nickname ?? '');
                   if (name !== null) app.dispatch({ type: 'Rename', uid, name });
@@ -165,11 +165,11 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
                 Apelido
               </button>
               {!pk.locked && !confirm && (
-                <button class="btn btn-sm btn-danger" onClick={() => setConfirm(true)}>Transferir…</button>
+                <button class="pk-btn pk-btn--sm pk-btn--danger" onClick={() => setConfirm(true)}>Transferir…</button>
               )}
               {confirm && (
                 <button
-                  class="btn btn-sm btn-danger"
+                  class="pk-btn pk-btn--sm pk-btn--danger"
                   onClick={() => {
                     if (app.dispatch({ type: 'Transfer', uids: [uid] }).ok) onClose();
                   }}
