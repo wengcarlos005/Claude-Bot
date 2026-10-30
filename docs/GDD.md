@@ -310,12 +310,17 @@ Na prática: com 2 h ativas por dia e 8 h offline a 50%, Kanto leva cerca de 2 d
   - **Pokédólar (₽):** batalhas e transferências. Gasto em loja, melhorias, Academia e caixas do PC.
   - **Pontos de Pesquisa (PP):** espécies novas, treinadores, áreas concluídas, ginásios, Liga e transferências. Gastos
     em melhorias de laboratório.
+- **Fragmentos** (vermelho, azul, verde, amarelo): caem de selvagens, treinadores, desafios, insígnias, Campeão,
+  shinies e lendários; regiões avançadas rendem mais. Não são vendidos nem compráveis na loja.
+- **Loja do jogo:** só bolas, remédios e buffs (Repel). Cosméticos virão depois.
+- **Oficina:** melhorias de treinador e itens de evolução, seguráveis e vitaminas são **fabricados** com fragmentos +
+  taxa em ₽. No futuro também poderão ser comprados de outros jogadores (Mercado de jogadores).
 - **Melhorias:**
-  - Em ₽: Tênis de Corrida, Moeda da Sorte, Técnica de Arremesso, Enfermeira, Lanche, Caixas do PC e Academia
-    (infinita, de baixo crescimento).
+  - Fabricadas na Oficina: Tênis de Corrida, Moeda da Sorte, Técnica de Arremesso, Enfermeira, Lanche, Caixas do PC e
+    Academia (infinita, de baixo crescimento).
   - Em PP: Treinamento, Exp. Share, Velocidade de Batalha, Persistência, Diário (limite offline), Equipe Autônoma
     (eficiência offline), Olhar Treinado (shiny) e Comprador Automático.
-  - Custo: `base · crescimento^nível`.
+  - Custo em ₽ (ou PP): `base · crescimento^nível`; as fabricadas pedem também fragmentos crescentes.
 - **Sumidouros:** bolas, poções, vitaminas, Academia, Caixas do PC e Cabo de Ligação.
 - **Anti-inflação:** a revanche da Liga paga pouco, os selvagens pagam pouco (o dinheiro grande vem de treinadores e
   ginásios) e a Academia absorve o excedente no fim do jogo.

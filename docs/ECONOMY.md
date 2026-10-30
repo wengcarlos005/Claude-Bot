@@ -152,6 +152,7 @@ Cada linha é uma rodada do simulador → problema → mudança.
 | 18 | Metade dos shinies perdidos (34/71) após 3–6 arremessos | Shiny: até 30 tentativas → 35/37 e 33/40 |
 | 19 | Pedido de design: liberar rotas por Nível de Treinador em vez de vitórias | Faixas por região (Kanto 1–30, Johto 30–42, Hoenn 42–62, Sinnoh 62–85); XP de treinador por vitória, captura, espécie nova, insígnia e Campeão. Resultado: Kanto 7,5–9,4 h, Johto 13–14 h, Hoenn 19,8–23,5 h, 8 insígnias de Sinnoh 28,3 h (ver §8) |
 | 20 | Mapa expandido para 100+ áreas por região (andares e zonas viram áreas próprias) | Pós-jogo fica no topo da faixa de Nível de Treinador da região. Resultado (seed 1): Brock 0,67 h, Campeão de Kanto 9,0 h, Campeão de Johto 19,4 h (antes 13–14 h; mais perto da calibração original de ~16 h) |
+| 21 | Pedido de design: melhorias de treinador e itens que não são poções/bolas passam a ser fabricados (Oficina) ou comprados de jogadores | Fragmentos (vermelho, azul, verde, amarelo) caem de selvagens, treinadores, desafios, insígnias, Campeão, shinies e lendários (×1,5 por região). A loja do jogo vende só bolas, remédios e buffs. Melhorias custam fragmentos + a mesma taxa em ₽. Resultado (seed 1): Brock 0,84 h, Campeão de Kanto 9,6 h, Johto 18,9 h, Hoenn 26,0 h |
 
 ## 7. Pontos em aberto
 - Validar Johto, Hoenn e Sinnoh com jogadores reais: o bot não troca a equipe por tipo contra cada ginásio, e um jogador

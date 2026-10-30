@@ -1,5 +1,6 @@
 // Mapa ilustrado da região: localidades numa trilha sobre a ilha, painel de detalhes à direita e progresso embaixo.
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import { hasWorld, renderWorld, worldPos } from '../../app/pret';
 import type { ScreenProps } from '../App';
 import { CroppedSprite, fmt, pct, useApp } from '../components';
 import { badgeSprite } from '../../app/assets';
@@ -32,7 +33,7 @@ function placesOf(areas: ResolvedArea[]): Place[] {
     let pl = byKey.get(key);
     if (!pl) {
       const kind: NodeKind = a.gym || a.league ? 'town' : a.kind === 'cave' ? 'cave' : a.kind === 'forest' ? 'forest' : a.kind === 'water' ? 'water'
-        : a.kind === 'city' ? 'town' : a.kind === 'building' ? 'building' : 'route';
+        : a.kind === 'building' ? 'building' : 'route';
       const name = a.gym ? a.name.replace(/^Ginásio d[eo] /, '') : a.league ? 'Liga Pokémon' : a.name.split(' · ')[0];
       pl = { key, name, kind, areas: [], post: a.unlock.some((r) => r.type === 'championOf' && r.regionId === a.regionId) };
       byKey.set(key, pl);
@@ -53,6 +54,28 @@ export function MapScreen({ go }: ScreenProps) {
   const areas = useMemo(() => region.areas.map((d) => app.data.areas.get(d.id)!), [regionId]);
   const places = useMemo(() => placesOf(areas), [regionId]);
   const world = useMemo(() => worldMap(hashString(regionId), places.map((p) => ({ key: p.key, kind: p.kind }))), [regionId]);
+  // Kanto e Hoenn: o mundo real do jogo (mapas montados pelas conexões); Johto e Sinnoh: mapa ilustrado.
+  const [real, setReal] = useState<{ region: string; url: string; w: number; h: number } | null>(null);
+  const [progress, setProgress] = useState<[number, number] | null>(null);
+  useEffect(() => {
+    if (!hasWorld(regionId)) return;
+    let alive = true;
+    setProgress(null);
+    renderWorld(regionId, (d, t) => alive && setProgress([d, t])).then((r) => alive && setReal({ region: regionId, ...r })).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [regionId]);
+  const realReady = real && real.region === regionId ? real : null;
+  const posOf = (pl: Place): { x: number; y: number } | null => {
+    if (!realReady) return world.pos.get(pl.key) ?? null;
+    for (const a of pl.areas) {
+      const p = worldPos(a.id);
+      if (p) return { x: (p[0] / realReady.w) * 100, y: (p[1] / realReady.h) * 100 };
+    }
+    return null;
+  };
+  const unplaced = realReady ? places.filter((pl) => !posOf(pl)) : [];
   const currentPlace = places.find((p) => p.areas.some((a) => a.id === current.id));
   const [selKey, setSel] = useState<string | null>(null);
   const firstOpen = [...places].reverse().find((p) => p.areas.some((a) => areaUnlocked(s, app.data, a)));
@@ -82,10 +105,14 @@ export function MapScreen({ go }: ScreenProps) {
         <MapList go={go} regionId={regionId} />
       ) : (
         <div class="atlas__main">
-          <div class="world" aria-label={`Mapa de ${region.name}`}>
-            <div class="world__canvas" style={{ backgroundImage: `url("${world.uri}")`, aspectRatio: `${world.w} / ${world.h}` }}>
+          <div class={`world ${realReady ? 'is-real' : ''}`} aria-label={`Mapa de ${region.name}`}>
+            {hasWorld(regionId) && !realReady && (
+              <div class="mapscene__loading world__loading"><span class="spinner" />Montando o mapa de {region.name}{progress ? ` · ${progress[0]}/${progress[1]}` : '…'}</div>
+            )}
+            <div class="world__canvas" style={{ backgroundImage: `url("${realReady ? realReady.url : world.uri}")`, aspectRatio: realReady ? `${realReady.w} / ${realReady.h}` : `${world.w} / ${world.h}` }}>
               {places.map((pl) => {
-                const pos = world.pos.get(pl.key)!;
+                const pos = posOf(pl);
+                if (!pos) return null;
                 const open = pl.areas.some((a) => areaUnlocked(s, app.data, a));
                 const here = pl === currentPlace;
                 const done = pl.areas.every((a) => (a.gym ? s.player.badges.includes(a.gym.badgeId) : a.league ? s.player.champions.includes(a.regionId) : s.world.areas[a.id]?.cleared));
@@ -106,6 +133,14 @@ export function MapScreen({ go }: ScreenProps) {
                 );
               })}
             </div>
+            {unplaced.length > 0 && (
+              <div class="world__others">
+                <span>Outras localidades</span>
+                {unplaced.map((pl) => (
+                  <button key={pl.key} class={`sub ${pl === sel ? 'is-sel' : ''} ${pl.areas.some((a) => areaUnlocked(s, app.data, a)) ? '' : 'is-locked'}`} aria-selected={pl === sel} onClick={() => setSel(pl.key)}>{pl.name}</button>
+                ))}
+              </div>
+            )}
           </div>
           {sel && <PlacePanel key={sel.key} place={sel} go={go} />}
         </div>

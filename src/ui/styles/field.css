@@ -257,3 +257,49 @@
   .hv-team { flex-wrap: wrap; justify-content: center; }
   .hv--area { order: -1; max-width: none; }
 }
+
+/* ---------- Cena sobre o mapa real (pret + PMD) ---------- */
+.mapscene { position: relative; overflow: hidden; background: #000; image-rendering: pixelated; isolation: isolate; height: 340px; border-radius: var(--radius-lg); }
+.huntview .mapscene { position: absolute; inset: 0; height: auto; border-radius: 0; }
+.mapscene__world { position: absolute; left: 0; top: 0; transition: transform 0.22s linear; will-change: transform; }
+.mapscene__layer { position: absolute; inset: 0; pointer-events: none; }
+.mapscene__layer canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.mapscene__layer.is-over { z-index: 9000; }
+.mapscene__huds { position: absolute; inset: 0; z-index: 9500; pointer-events: none; }
+.mapscene::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 9800; transition: background 2s; box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.35); }
+.mapscene.is-night::after { background: rgba(18, 28, 72, 0.4); }
+.mapscene.is-morning::after { background: rgba(255, 196, 120, 0.1); }
+.mapscene.is-loading .field { position: absolute; inset: 0; height: auto; filter: blur(2px) brightness(0.7); }
+.mapscene__loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 9900; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: var(--radius-md); background: rgba(9, 16, 32, 0.9); color: #fff; font-weight: 700; }
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.msprite { position: absolute; width: 0; height: 0; transition: left 0.12s linear, top 0.12s linear; }
+.msprite.is-wander { transition: left 0.7s linear, top 0.7s linear; }
+.msprite__shadow { position: absolute; left: 0; top: -6px; height: 10px; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(0, 0, 0, 0.28); }
+.msprite__img { position: absolute; left: 0; top: 0; display: block; background-repeat: no-repeat; image-rendering: pixelated;
+  animation: pmd var(--dur) steps(var(--steps)) var(--iter) both; }
+@keyframes pmd { from { background-position-x: 0; } to { background-position-x: var(--end); } }
+.msprite.is-fallback > span:not(.msprite__shadow) { position: absolute; transform: translate(-50%, -90%); }
+.msprite.is-fallback .pk-sprite { width: 72px; height: 72px; }
+.msprite.is-down .msprite__img { filter: grayscale(1) brightness(0.85); }
+.msprite.is-down, .msprite.is-absorbed { animation: fe-fade 3.2s ease-in forwards; }
+.msprite.is-absorbed .msprite__img { transform: scale(0.05); opacity: 0; transition: transform 0.18s ease-in, opacity 0.18s; }
+.msprite.is-born .msprite__img { animation: pmd var(--dur) steps(var(--steps)) var(--iter) both, fe-born 0.5s ease-out; }
+.mhud { position: absolute; width: 0; height: 0; transition: left 0.12s linear, top 0.12s linear; }
+.mhud.is-wander { transition: left 0.7s linear, top 0.7s linear; }
+.mhud .fe__hud { bottom: auto; top: -96px; transform: translateX(-50%); }
+.mhud .fe__hud.is-mini { top: -82px; }
+.mhud .fe__pop { top: -120px; }
+.mhud .fe__move { bottom: auto; top: -128px; }
+.mhud .fe__tag { bottom: auto; top: -118px; }
+.mhud .fe__brackets { left: 0; top: -34px; width: 84px; height: 76px; transform: translate(-50%, -50%); }
+@keyframes brackets-m { 50% { transform: translate(-50%, -50%) scale(1.08); } }
+.mhud .fe__brackets { animation: brackets-m 1.2s ease-in-out infinite; }
+.mapscene .shot, .mapscene .field__ball { position: absolute; }
+@media (max-width: 900px) {
+  .huntview .mapscene { position: relative; inset: auto; height: 420px; border-radius: var(--radius-lg); border: 2px solid var(--bezel); }
+  .mhud .fe__hud { top: -70px; }
+  .mhud .fe__hud.is-mini { display: none; }
+  .mhud .fe__pop { top: -90px; }
+}

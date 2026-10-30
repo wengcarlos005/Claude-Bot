@@ -30,6 +30,7 @@ GameApp.boot()
     app.start();
     // Acesso para depuração pelo console do navegador (ex.: pokemonIdle.state).
     (window as unknown as { pokemonIdle: GameApp }).pokemonIdle = app;
+    void import('./app/pret').then((m) => ((window as unknown as { pokemonIdleArt: unknown }).pokemonIdleArt = m));
   })
   .catch((e) => {
     console.error(e);

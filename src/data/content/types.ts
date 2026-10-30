@@ -11,7 +11,7 @@ export type Requirement =
   | { type: 'keyItem'; itemId: string }
   | { type: 'anyOf'; of: Requirement[] };
 
-export type ItemCategory = 'ball' | 'medicine' | 'evolution' | 'held' | 'vitamin' | 'boost' | 'key' | 'misc';
+export type ItemCategory = 'ball' | 'medicine' | 'evolution' | 'held' | 'vitamin' | 'boost' | 'key' | 'material' | 'misc';
 
 export type BallBonus =
   | { kind: 'types'; types: TypeId[]; mult: number }
@@ -36,6 +36,7 @@ export type ItemEffect =
   | { kind: 'friendshipBoost'; mult: number }
   | { kind: 'repel' | 'lure' | 'luckyIncense'; minutes: number }
   | { kind: 'key' }
+  | { kind: 'material' }
   | { kind: 'none' };
 
 export interface ItemDef {

@@ -81,6 +81,15 @@ export function SettingsScreen(_: ScreenProps) {
             Dados de espécies, golpes, evoluções e encontros: <a href="https://pokeapi.co/" target="_blank" rel="noreferrer">PokéAPI</a> (dados
             factuais). Sprites carregados do repositório público de sprites da PokéAPI; seus direitos pertencem aos titulares originais.
           </p>
+          <p>
+            Mapas, cidades e cenários: arquivos originais de Pokémon FireRed/LeafGreen e Emerald, lidos das decompilações da{' '}
+            <a href="https://github.com/pret" target="_blank" rel="noreferrer">pret</a> e montados no navegador (nada é copiado para este projeto).
+          </p>
+          <p>
+            Pokémon andando em 8 direções: <a href="https://sprites.pmdcollab.org/" target="_blank" rel="noreferrer">PMDCollab (SpriteCollab)</a>,
+            licença <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noreferrer">CC BY-NC 4.0</a>, créditos aos
+            artistas listados em cada sprite. Treinadores: <a href="https://play.pokemonshowdown.com/sprites/trainers/" target="_blank" rel="noreferrer">Pokémon Showdown</a>.
+          </p>
           <p>Código, sistemas e regras de jogo: implementação própria deste projeto.</p>
         </div>
       </Window>

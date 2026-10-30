@@ -44,7 +44,7 @@ export function describeEvent(data: GameData, state: GameState, e: GameEvent): D
     case 'evolved':
       return { text: `${sp(e.from)} evoluiu para ${sp(e.to)}!`, tone: 'great', toast: true };
     case 'itemFound':
-      return { text: `Obteve ${e.qty > 1 ? `${e.qty}× ` : ''}${item(e.itemId)}.`, tone: 'good', toast: data.items.get(e.itemId)?.category === 'key' };
+      return { text: `Obteve ${e.qty > 1 ? `${e.qty}× ` : ''}${item(e.itemId)}.`, tone: data.items.get(e.itemId)?.category === 'material' ? 'muted' : 'good', toast: data.items.get(e.itemId)?.category === 'key' };
     case 'badge':
       return { text: `Você ganhou a ${e.badgeName}.`, tone: 'great', toast: true };
     case 'champion':
