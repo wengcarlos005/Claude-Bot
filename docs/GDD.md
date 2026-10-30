@@ -31,7 +31,7 @@ e quando desafiar ginásios e ligas. O progresso continua offline.
 | Escala | Loop |
 |---|---|
 | Segundos | Caminhar (3,5 s) → encontro → batalha por turnos (0,8 s/ação) → captura ou nocaute → XP/₽ |
-| Minutos | Level up → evolução → concluir área → nova área liberada |
+| Minutos | Level up → evolução → Nível de Treinador sobe → nova área liberada |
 | Horas | Comprar bolas e melhorias → enfrentar o ginásio → insígnia sobe o teto de nível |
 | Dias | Liga → Campeão → nova região; marcos da Pokédex dão bônus permanentes |
 | Semanas | Shinies, IVs S, Afinidade/Maestria máximas, Academia, lendários |
@@ -68,9 +68,24 @@ flowchart LR
     peso relativo de cada método só conta quando o jogador tem o item necessário.
   - **Horário do dia** (relógio local): manhã 4h–10h, dia 10h–20h, noite 20h–4h. Altera os encontros (em Johto e
     Sinnoh) e as evoluções.
-- **Concluir a área:** `vitórias ≥ winsToClear × 4` **e** todos os treinadores de rota derrotados. Áreas sem encontros a
-  pé (ex.: S.S. Anne) exigem apenas os treinadores.
-  - Recompensa: +5 PP, itens-chave (ex.: S.S. Anne → Vara Velha) e a liberação das próximas áreas.
+- **Liberação de áreas por Nível de Treinador.** Cada área exige um Nível de Treinador mínimo, distribuído em ordem
+  dentro da faixa da região: Kanto 1–30, Johto 30–42, Hoenn 42–62, Sinnoh 62–85. Insígnias, itens-chave (Surf, Vara…)
+  e a Liga anterior continuam valendo como requisitos extras onde o jogo original os exige.
+- **Nível de Treinador:** `nível = 1 + ⌊√(XP de treinador / 10)⌋` (máx. 100); o nível *n* exige `10·(n−1)²` XP.
+  | Fonte | XP de treinador |
+  |---|---|
+  | Vitória contra selvagem | 1 |
+  | Captura | 2 (+10 se for espécie nova) |
+  | Treinador de rota | 5 |
+  | Treinador de ginásio/Liga | 10 |
+  | Insígnia | 60 |
+  | Campeão | 200 |
+  | Área concluída | 20 |
+  Saves antigos recebem XP de treinador estimado pela migração v2→v3 (`vitórias·1,5 + capturas·2 + espécies·10`).
+- **Concluir a área (opcional):** `vitórias ≥ winsToClear × 4` **e** todos os treinadores de rota derrotados. Áreas sem
+  encontros a pé (ex.: S.S. Anne) exigem apenas os treinadores.
+  - Recompensa: +5 PP, +20 XP de treinador e itens-chave (ex.: S.S. Anne → Vara Velha). Não é mais necessária para
+    liberar a próxima área.
 - **Repel:** enquanto ativo, ignora selvagens 5 níveis abaixo do líder.
 - **Regeneração ao caminhar:** 3% dos PS/s (+1% por nível de "Lanche de Viagem"). Pokémon desmaiados regeneram na metade
   da taxa e só voltam a lutar com 50% dos PS. Em ginásios e ligas **não há regeneração**.

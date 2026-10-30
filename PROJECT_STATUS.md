@@ -1,6 +1,6 @@
 # PROJECT_STATUS
 
-_Última atualização: 30/10/2026 (sessão noturna de desenvolvimento)._
+_Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md](docs/ROADMAP.md)._
 
 ## ✅ Concluído (com testes ou verificação)
 
@@ -45,34 +45,51 @@ _Última atualização: 30/10/2026 (sessão noturna de desenvolvimento)._
   também nos PS, Tier no primeiro Pokémon dos treinadores, pausas longas viram progresso offline, saves ilegíveis vão
   para quarentena, transferência atômica e validação de configurações.
 
-### Interface (Preact, responsiva)
+### Nível de Treinador
+- As áreas liberam por **Nível de Treinador** (Kanto 1–30, Johto 30–42, Hoenn 42–62, Sinnoh 62–85), não mais por
+  vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
+- XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
+
+### Design System e interface
+- **Design System "hardware do Pokédex"** ([artifact](https://claude.ai/artifact/GDMyLsBF3LxAsWg9epbDKs)): chassi
+  vermelho, telas LCD, azul de lente para interação, dourado para recompensas; temas Noite (padrão) e Dia; tipografia
+  Pixelify Sans / M PLUS Rounded 1c / VT323; 19 componentes `pk-*` com guias de uso.
+- No código: `design/tokens.json` → `npm run build:tokens` → `src/ui/styles/tokens.css`; componentes em
+  `src/ui/styles/components.css`; layout do jogo em `src/ui/styles/app.css`.
+- Interface inteira refeita no Design System, **sem emoji**, com barra superior (Nível de Treinador, ₽, PP, insígnias,
+  Pokédex), navegação lateral e barra inferior no celular.
+- **Mapa novo:** cada rota mostra os sprites dos Pokémon com a chance de encontro (silhueta se ainda não visto, marca se
+  capturado), o time do líder nos ginásios e Ligas, Nível de Treinador exigido, projeção do Hunt Analyzer e filtros
+  por nome, tipo, "fraco contra", não capturados, só liberadas e lendários.
 - Telas: Explorar, Mapa, Equipe, PC, Pokédex, Mochila, Loja, Pesquisa, Auto Manager, Análises e Config.
-- Modais de inicial, retorno offline e detalhe do Pokémon.
-- Tema claro/escuro e layout de celular com abas inferiores.
 
 ### Documentação
-- GDD v0.2, Arquitetura v0.2 (inclui modelo de banco e plano do backend), ECONOMY (método, resultados e 15 rodadas de
-  calibração) e Roadmap (MVP, critérios e riscos).
+- GDD v0.2, Arquitetura v0.2 (inclui modelo de banco e plano do backend), ECONOMY (método, resultados e 19 rodadas de
+  calibração) e Roadmap (passo a passo com status, MVP e riscos).
 
 ### Testes executados
 | O que | Resultado |
 |---|---|
-| `npm test` | 33 testes: fórmulas com valores de referência, integridade dos dados, comandos, determinismo, evoluções, Centro Pokémon, regras de captura, conquistas, persistência e migrações, regressões da revisão |
+| `npm test` | 35 testes: Nível de Treinador, fórmulas com valores de referência, integridade dos dados, comandos, determinismo, evoluções, Centro Pokémon, regras de captura, conquistas, persistência e migrações, regressões da revisão |
 | `npm run e2e` (Playwright) | ✓ Inicial → batalhas → as 11 telas → Hunt Analyzer → salvar/recarregar → 2 h offline com relatório → celular sem rolagem horizontal, 0 erros no console |
 | `npm run build` | OK. JS inicial ~60 kB gzip; dados ~150 kB gzip em chunks |
 | Playwright (manual) | Escolher inicial → batalhas/capturas com sprites animados → todas as telas → Hunt Analyzer → layout de celular → salvar/recarregar → **2 h offline com relatório**. 0 erros no console |
-| Simulador | Kanto: Campeão em 8,3–11,7 h (3–4 sementes). Com 120 h: Johto 15,5–16,5 h, Hoenn 29–41 h, 8 insígnias de Sinnoh 40–52 h |
+| Simulador (Nível de Treinador) | Kanto 7,5–9,4 h, Johto 13–14 h, Hoenn 19,8–23,5 h, 8 insígnias de Sinnoh 28,3 h |
+| Capturas de tela (Playwright) | Desktop e celular, temas Noite e Dia; filtro do Mapa destacando as rotas |
 
 ## 🔶 Em andamento
-- **Balanceamento pós-Kanto:** Johto ~16 h, Hoenn 29–41 h, 8 insígnias de Sinnoh 40–52 h; a Liga de Sinnoh é a parede
-  de fim de jogo (ver `docs/ECONOMY.md` §8). Precisa de playtest humano para confirmar.
+- **Polimento visual (etapa 1.13):** ícones pixel próprios para a navegação e refinamento das telas secundárias (Loja,
+  Mochila, Pesquisa, Auto Manager, Análises, detalhe do Pokémon), animações de captura e evolução.
+- **Balanceamento com Nível de Treinador:** Hoenn ficou mais rápido (20–24 h; antes 29–41 h). Confirmar no playtest se
+  as faixas de Hoenn/Sinnoh devem subir (ver `docs/ECONOMY.md` §8).
 
 ## ⏳ Pendente (próximas etapas — ver docs/ROADMAP.md)
-1. Polimento: áudio, auditoria de acessibilidade/Lighthouse, ícones dedicados por geração.
-2. Backend autoritativo (Fastify + Postgres rodando o mesmo core), contas e cloud save.
-3. Ranking por temporada, mercado com escrow, guildas, PvP, raids.
-4. Status de batalha e habilidades, variantes regionais, breeding, eventos sazonais.
-5. Rodar o E2E (`npm run e2e`) também no CI (exige instalar o Chromium no runner).
+1. Playtest da primeira hora e da troca Kanto → Johto.
+2. Áudio, auditoria de acessibilidade/Lighthouse, ícones dedicados por geração.
+3. Backend autoritativo (Fastify + Postgres rodando o mesmo core), contas e cloud save.
+4. Ranking por temporada, mercado com escrow, guildas, PvP, raids.
+5. Status de batalha e habilidades, variantes regionais, breeding, eventos sazonais.
+6. Rodar o E2E (`npm run e2e`) também no CI (exige instalar o Chromium no runner).
 
 ## 🐞 Bugs conhecidos / limitações
 - O E2E está no repositório (`npm run e2e`), mas ainda não roda no CI.
@@ -84,5 +101,5 @@ _Última atualização: 30/10/2026 (sessão noturna de desenvolvimento)._
 - O progresso offline usa o horário do momento do retorno para regras de dia/noite.
 
 ## ▶️ Próxima tarefa sugerida
-Playtest do início (primeira hora) e de uma transição de região (Kanto → Johto). Depois, decidir entre Postgres+Fastify
-e Firebase para o backend (recomendação em docs/ARCHITECTURE.md §8) e iniciar a etapa 10.
+Polimento visual (etapa 1.13) e playtest (1.14). Depois, decidir entre Postgres+Fastify e Firebase para o backend
+(recomendação em docs/ARCHITECTURE.md §8) e iniciar a Fase 2.
