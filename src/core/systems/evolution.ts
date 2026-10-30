@@ -1,6 +1,7 @@
 // Avaliação e execução de evoluções (orientado a dados: condições vindas de species.json).
 import type { Evolution, EvolutionCondition } from '../../data/types';
 import type { GameContext } from '../context';
+import { refreshMoves } from '../moves';
 import { addPokemon, createPokemon, learnedMoves, maxHpOf, partyMembers, pokemonStats, speciesOf } from '../pokemon';
 import type { GameState, OwnedPokemon } from '../state/types';
 import { timeOfDay } from '../world';
@@ -61,6 +62,7 @@ export function evolve(ctx: GameContext, state: GameState, pk: OwnedPokemon, evo
   registerCaught(ctx, state, pk.species, pk.shiny);
   state.stats.evolutions++;
   ctx.emit({ type: 'evolved', uid: pk.uid, from, to: pk.species });
+  refreshMoves(ctx, pk);
 
   // Shedinja: aparece junto quando Nincada evolui, se houver uma Poké Ball sobrando.
   const shed = speciesOf(ctx.data, from).evolutions.find((e) => e.special === 'shed');

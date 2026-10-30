@@ -40,9 +40,46 @@ interface Model {
   target: number | null;
   inBattle: boolean;
   home: { x: number; y: number };
+  /** Última visita (ms) de cada setor de SECTOR×SECTOR blocos: o líder prefere ir para onde não esteve há mais tempo. */
+  visits: Float64Array;
 }
 
+const SECTOR = 8;
+
 const BODY_MS = 3200;
+/** Quantos selvagens ficam passeando ao mesmo tempo: cresce com o tamanho do mato (5 a 14). */
+const populationOf = (cells: number) => Math.max(5, Math.min(14, Math.round(cells / 28)));
+
+/** Maior região conexa de células andáveis (1 = dentro). */
+function largestRegion(map: RenderedMap, passable: (c: number) => boolean): Uint8Array {
+  const seen = new Int32Array(map.cells.length).fill(-1);
+  let best = -1, bestN = 0, id = 0;
+  const q = new Int32Array(map.cells.length);
+  for (let s = 0; s < map.cells.length; s++) {
+    if (seen[s] !== -1 || !passable(map.cells[s])) continue;
+    let h = 0, n = 0;
+    q[n++] = s;
+    seen[s] = id;
+    while (h < n) {
+      const c = q[h++], x = c % map.w;
+      for (const nb of [c - 1, c + 1, c - map.w, c + map.w]) {
+        if (nb < 0 || nb >= map.cells.length || (nb === c - 1 && x === 0) || (nb === c + 1 && x === map.w - 1)) continue;
+        if (seen[nb] !== -1 || !passable(map.cells[nb])) continue;
+        seen[nb] = id;
+        q[n++] = nb;
+      }
+    }
+    if (n > bestN) [best, bestN] = [id, n];
+    id++;
+  }
+  const out = new Uint8Array(map.cells.length);
+  for (let i = 0; i < out.length; i++) if (seen[i] === best) out[i] = 1;
+  return out;
+}
+
+function hasNeighbor(map: RenderedMap, i: number, mask: Uint8Array): boolean {
+  return [i - 1, i + 1, i - map.w, i + map.w].some((n) => n >= 0 && n < mask.length && mask[n] === 1);
+}
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 // Sprites PMD carregados (por espécie/shiny) — leitura síncrona no render; o carregamento dispara re-render.
@@ -146,13 +183,18 @@ function MapWorld({ map }: { map: RenderedMap }) {
   const spawnCell = waterOnly ? Cell.Water : Cell.Grass;
   const passable = (c: number) => c === Cell.Walk || c === Cell.Grass;
 
-  // Células candidatas para selvagens (mato alto; ou água em áreas só de pesca/surf; ou chão em cavernas).
-  const spawnCells = useMemo(() => {
+  // Células candidatas para selvagens (mato alto; ou água em áreas só de pesca/surf; ou chão em cavernas), só na parte
+  // do mapa alcançável a pé a partir da maior região andável (evita selvagens presos atrás de cercas ou bordas).
+  const { spawnCells, reach } = useMemo(() => {
+    const reach = largestRegion(map, passable);
+    const ok = (i: number) => reach[i] === 1 || (spawnCell === Cell.Water && hasNeighbor(map, i, reach));
     const out: number[] = [];
-    for (let i = 0; i < map.cells.length; i++) if (map.cells[i] === spawnCell) out.push(i);
-    if (out.length < 6) for (let i = 0; i < map.cells.length; i++) if (map.cells[i] === Cell.Walk) out.push(i);
-    return out;
+    for (let i = 0; i < map.cells.length; i++) if (map.cells[i] === spawnCell && ok(i)) out.push(i);
+    if (out.length < 6) for (let i = 0; i < map.cells.length; i++) if (map.cells[i] === Cell.Walk && reach[i]) out.push(i);
+    return { spawnCells: out, reach };
   }, [map.key, spawnCell]);
+  const sectorsW = Math.ceil(map.w / SECTOR);
+  const sectorOf = (x: number, y: number) => Math.floor(y / SECTOR) * sectorsW + Math.floor(x / SECTOR);
 
   const pickSlot = () => {
     const pool = walkTable.length ? walkTable : table;
@@ -161,21 +203,39 @@ function MapWorld({ map }: { map: RenderedMap }) {
     const x = pool.find((t) => (r -= t.weight) <= 0) ?? pool[0];
     return { species: x.slot.species, level: x.slot.min + Math.floor(Math.random() * (x.slot.max - x.slot.min + 1)) };
   };
-  const cellNear = (cx: number, cy: number, rMin: number, rMax: number, m: Model): { x: number; y: number } | null => {
+  /** Célula livre sorteada em qualquer ponto do mapa (longe do líder e dos outros selvagens). */
+  const randomCell = (m: Model): { x: number; y: number } | null => {
     for (let tries = 0; tries < 60; tries++) {
       const i = spawnCells[Math.floor(Math.random() * spawnCells.length)];
       if (i === undefined) return null;
       const x = i % map.w, y = (i / map.w) | 0;
-      const d = Math.hypot(x - cx, y - cy);
-      if ((d >= rMin && d <= rMax) || tries > 45) {
-        if (m.mons.some((o) => Math.abs(o.x - x) + Math.abs(o.y - y) < 2)) continue;
-        return { x, y };
-      }
+      if (Math.hypot(x - m.px, y - m.py) < 3 && tries < 50) continue;
+      if (m.mons.some((o) => Math.abs(o.x - x) + Math.abs(o.y - y) < 2)) continue;
+      return { x, y };
     }
     return null;
   };
-  const spawn = (m: Model, species: string, level: number, near: { x: number; y: number }, trainer?: string): Mon | null => {
-    const pt = cellNear(near.x, near.y, 3, 9, m);
+  /**
+   * Varredura: nota de um destino = há quanto tempo o setor não é visitado − distância. O líder vai cobrindo o mapa
+   * todo em vez de lutar sempre perto de onde está (e evita atravessar o mapa de uma vez só).
+   */
+  const destScore = (m: Model, x: number, y: number) => {
+    const d = Math.hypot(x - m.px, y - m.py);
+    const stale = Math.min(120, (now - (m.visits[sectorOf(x, y)] ?? 0)) / 1000);
+    return stale - d * 1.4 - (d < 3 ? 40 : 0) - (d > 22 ? (d - 22) * 4 : 0);
+  };
+  const bestCell = (m: Model): { x: number; y: number } | null => {
+    let best: { x: number; y: number } | null = null, bestS = -Infinity;
+    for (let k = 0; k < 24; k++) {
+      const c = randomCell(m);
+      if (!c) break;
+      const sc = destScore(m, c.x, c.y);
+      if (sc > bestS) [best, bestS] = [c, sc];
+    }
+    return best;
+  };
+  const spawn = (m: Model, species: string, level: number, at?: { x: number; y: number } | null, trainer?: string): Mon | null => {
+    const pt = at ?? randomCell(m);
     if (!pt) return null;
     const mon: Mon = { key: ++m.seq, species, level, ...pt, dir: Math.floor(Math.random() * 8), moveAt: now + 1500 + Math.random() * 3000, movingUntil: 0, born: now, state: 'idle', downAt: 0, trainer };
     m.mons.push(mon);
@@ -190,14 +250,17 @@ function MapWorld({ map }: { map: RenderedMap }) {
     for (const i of spawnCells) { sx += i % map.w; sy += (i / map.w) | 0; }
     const cx = spawnCells.length ? sx / spawnCells.length : map.w / 2;
     const cy = spawnCells.length ? sy / spawnCells.length : map.h / 2;
-    const near = findPath(map, { x: Math.round(cx), y: Math.round(cy) }, (x, y) => map.cells[y * map.w + x] === Cell.Walk, () => true, 20000);
+    const near = findPath(map, { x: Math.round(cx), y: Math.round(cy) }, (x, y) => map.cells[y * map.w + x] === Cell.Walk && reach[y * map.w + x] === 1, () => true, 20000);
     const home = near ? near[near.length - 1] : { x: Math.round(cx), y: Math.round(cy) };
-    m = ref.current = { key: map.key, mons: [], seq: 0, px: home.x, py: home.y, dir: 0, path: [], walkTotal: 1, plan: null, target: null, inBattle: false, home };
+    m = ref.current = {
+      key: map.key, mons: [], seq: 0, px: home.x, py: home.y, dir: 0, path: [], walkTotal: 1, plan: null, target: null, inBattle: false, home,
+      visits: new Float64Array(sectorsW * Math.ceil(map.h / SECTOR)),
+    };
     if (!area.gym && !area.league) {
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < populationOf(spawnCells.length); i++) {
         const sl = pickSlot();
         if (sl) {
-          const mon = spawn(m, sl.species, sl.level, home);
+          const mon = spawn(m, sl.species, sl.level);
           if (mon) mon.born = now - 1000;
         }
       }
@@ -223,11 +286,14 @@ function MapWorld({ map }: { map: RenderedMap }) {
     m.plan = ex.next;
     const plan = ex.next;
     let t: Mon | undefined;
+    const dest = bestCell(m);
     if (plan.kind === 'wild' && !plan.legendary) {
-      t = m.mons.filter((x) => x.state === 'idle' && x.species === plan.species && !x.trainer)
-        .sort((a, c) => Math.hypot(a.x - m!.px, a.y - m!.py) - Math.hypot(c.x - m!.px, c.y - m!.py))[0];
+      // Um selvagem da espécie já em cena, se estiver num ponto tão bom quanto o destino sorteado.
+      const same = m.mons.filter((x) => x.state === 'idle' && x.species === plan.species && !x.trainer)
+        .map((x) => ({ x, s: destScore(m!, x.x, x.y) })).sort((a, c) => c.s - a.s)[0];
+      if (same && (!dest || same.s >= destScore(m, dest.x, dest.y) - 15)) t = same.x;
     }
-    if (!t) t = spawn(m, plan.species, plan.level, { x: m.px, y: m.py }, plan.kind === 'wild' ? undefined : plan.trainerName) ?? undefined;
+    if (!t) t = spawn(m, plan.species, plan.level, dest, plan.kind === 'wild' ? undefined : plan.trainerName) ?? undefined;
     if (t) {
       t.level = plan.level;
       t.state = 'target';
@@ -254,7 +320,7 @@ function MapWorld({ map }: { map: RenderedMap }) {
   } else if (ex.phase === 'battle' && b) {
     let t = m.mons.find((x) => x.key === m!.target);
     if (!t) {
-      const mon = spawn(m, b.foe.species, b.foe.level, { x: m.px, y: m.py });
+      const mon = spawn(m, b.foe.species, b.foe.level);
       if (mon) {
         mon.x = Math.round(m.px) + 1;
         mon.y = Math.round(m.py);
@@ -291,10 +357,12 @@ function MapWorld({ map }: { map: RenderedMap }) {
     mon.y = ny;
     mon.movingUntil = now + 700;
   }
-  if (!area.gym && !area.league && ex.phase !== 'healing' && m.mons.filter((x) => x.state === 'idle').length < 5 && Math.random() < 0.05) {
+  // Reposição: novos selvagens nascem em pontos aleatórios do mapa inteiro.
+  if (!area.gym && !area.league && ex.phase !== 'healing' && m.mons.filter((x) => x.state === 'idle').length < populationOf(spawnCells.length) && Math.random() < 0.05) {
     const sl = pickSlot();
-    if (sl) spawn(m, sl.species, sl.level, { x: m.px, y: m.py });
+    if (sl) spawn(m, sl.species, sl.level);
   }
+  m.visits[sectorOf(Math.round(m.px), Math.round(m.py))] = now;
 
   // ---------------------------------------------------------------- câmera
   const worldW = map.w * T, worldH = map.h * T;

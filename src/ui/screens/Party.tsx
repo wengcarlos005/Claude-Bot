@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
 import { Bar, GenderIcon, Grade, Sprite, TypeBadge, Window, useApp } from '../components';
 import { PokemonDetail } from './PokemonDetail';
-import { activeMember, displayName, maxHpOf, movesFor, speciesOf } from '../../core/pokemon';
+import { activeMember, displayName, maxHpOf, speciesOf } from '../../core/pokemon';
+import { activeMoves } from '../../core/moves';
 import { ivGrade } from '../../core/formulas/stats';
 import { availableEvolutions } from '../../core/systems/evolution';
 import { expForLevel } from '../../core/formulas/experience';
@@ -37,7 +38,7 @@ export function PartyScreen(_: ScreenProps) {
                   <div class="pk-row">{sp.types.map((t) => <TypeBadge key={t} type={t} />)}<Grade grade={ivGrade(pk.ivs)} />{evo && <span class="pk-chip-btn" aria-pressed="true">Pode evoluir</span>}</div>
                   <Bar value={pk.fainted ? 0 : pk.hp} max={max} caption="PS" label={`${Math.ceil(pk.fainted ? 0 : pk.hp)}/${max}`} />
                   <Bar value={pk.level >= cap ? 1 : pk.xp - x0} max={pk.level >= cap ? 1 : x1 - x0} kind="xp" />
-                  <div class="pk-card__note">{movesFor(app.data, pk.species, pk.level).map((m) => app.data.moves.get(m)?.name).join(' · ')}</div>
+                  <div class="pk-card__note">{activeMoves(app.data, pk).map((m) => app.data.moves.get(m)?.name ?? 'Struggle').join(' · ')}</div>
                   {pk.heldItem && <div class="pk-card__note">Segurando: {app.data.items.get(pk.heldItem)?.name}</div>}
                   {pk.level > cap && <div class="pk-card__note is-bad">Acima do teto: luta como Nv {cap} até a próxima insígnia.</div>}
                 </div>

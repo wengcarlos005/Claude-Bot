@@ -116,3 +116,22 @@ details summary { cursor: pointer; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 .pk-filter .pk-input { flex: 1 1 200px; }
+
+/* ---------- Golpes (MovesPanel) ---------- */
+.moves__head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.moves__head h3 { margin: 0; }
+.moves__count { font-family: var(--font-lcd); font-size: 16px; color: var(--ink-muted); }
+.moves__auto { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.moves__hint { margin: 4px 0 8px; }
+.moves__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.move {
+  width: 100%; display: grid; grid-template-columns: 14px auto minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 0; padding: 5px 10px 5px 6px;
+  cursor: pointer; font: inherit; color: var(--ink); text-align: left; background: var(--screen-raised); border: 2px solid var(--bezel); border-radius: 0;
+}
+.move:hover { border-color: var(--bezel-strong); }
+.move.is-on { border-color: var(--lens); background: color-mix(in srgb, var(--lens) 16%, var(--screen-raised)); }
+.move:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.move__slot { color: var(--lens); font-size: 11px; }
+.move__name { font-family: var(--font-display); font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.move__meta { grid-column: 3; font-family: var(--font-lcd); font-size: 15px; line-height: 15px; color: var(--ink-muted); white-space: nowrap; }
+.moves__next { margin: 8px 0 0; }

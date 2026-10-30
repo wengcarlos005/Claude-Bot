@@ -4,6 +4,7 @@ import { AVATARS } from '../data/content/avatars';
 import { canAfford, craftItem, nextUpgradeCost, pay, upgradeCraftCost } from './systems/crafting';
 import { upgradeLevel } from './bonuses';
 import { addPokemon, createPokemon, speciesOf } from './pokemon';
+import { setActiveMoves } from './moves';
 import type { CaptureRule, GameState, Settings } from './state/types';
 import { MAX_PARTY } from './state/types';
 import { registerCaught, gainAffinity, transferPokemon } from './systems/collection';
@@ -20,6 +21,7 @@ export type Command =
   | { type: 'SellItem'; itemId: string; qty: number }
   | { type: 'UseItem'; itemId: string; uid?: string }
   | { type: 'HoldItem'; uid: string; itemId: string | null }
+  | { type: 'SetMoves'; uid: string; active: string[]; auto: boolean }
   | { type: 'BuyUpgrade'; upgradeId: string }
   | { type: 'Craft'; itemId: string; qty: number }
   | { type: 'Transfer'; uids: string[] }
@@ -83,6 +85,12 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       return useItem(ctx, state, cmd.itemId, cmd.uid);
     case 'HoldItem':
       return holdItem(ctx, state, cmd.uid, cmd.itemId);
+    case 'SetMoves': {
+      const pk = state.pokemon[cmd.uid];
+      if (!pk) return fail('Pokémon não encontrado.');
+      const err = setActiveMoves(ctx.data, pk, cmd.active, cmd.auto);
+      return err ? fail(err) : ok();
+    }
     case 'Craft':
       return craftItem(ctx, state, cmd.itemId, cmd.qty);
     case 'BuyUpgrade': {

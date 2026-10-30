@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks';
 import { Bar, GenderIcon, Grade, Modal, Sprite, TypeBadge, fmt, useApp } from '../components';
 import { conditionText } from '../text';
 import { STAT_KEYS } from '../../data/types';
-import { affinityLevel, displayName, masteryLevel, maxHpOf, movesFor, pokemonStats, speciesOf } from '../../core/pokemon';
+import { affinityLevel, displayName, masteryLevel, maxHpOf, pokemonStats, speciesOf } from '../../core/pokemon';
+import { MovesPanel } from './MovesPanel';
 import { expForLevel } from '../../core/formulas/experience';
 import { ivGrade, ivTotal } from '../../core/formulas/stats';
 import { NATURE_BY_ID } from '../../core/formulas/natures';
@@ -83,20 +84,7 @@ export function PokemonDetail({ uid, onClose }: { uid: string; onClose: () => vo
           <div class="small muted">Soma de IVs: {ivTotal(pk.ivs)}/186</div>
         </div>
         <div class="stack">
-          <div>
-            <h3>Golpes</h3>
-            <div class="stack" style={{ gap: '4px' }}>
-              {movesFor(app.data, pk.species, pk.level).map((m) => {
-                const mv = app.data.moves.get(m)!;
-                return (
-                  <div key={m} class="row spread small">
-                    <span><TypeBadge type={mv.type} /> {mv.name}</span>
-                    <span class="muted">Poder {mv.power ?? 50} · Prec. {mv.accuracy ?? '—'}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <MovesPanel pk={pk} />
           <div>
             <h3>Evolução</h3>
             {sp.evolutions.length === 0 && <p class="muted small">Não evolui.</p>}
