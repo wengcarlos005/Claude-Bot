@@ -50,6 +50,20 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
   vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
 - XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
 
+### Hub, batalha na rota e mapa (30/10)
+- **Hub** no estilo painel de controle: colunas fixas com cartão do treinador, Pokémon em campo (tipos, nota de IV, PS, XP) e
+  equipe (clique para pôr em campo); automações rápidas (regras de captura, poções com limite, Revive, recuo,
+  transferência, evolução, reposição de bolas) e registro; barra de ferramentas com ícones de itens dos jogos.
+- **Sessão de hunt:** cronômetro, XP de Treinador/h, XP de Pokémon/h, lucro líquido/h (descontando bolas, poções e
+  Revives gastos), abates/h e capturas/h; lista de capturas recentes com nota de IV.
+- **Cena da rota:** o core sorteia o próximo encontro no início da caminhada (`exploration.next`), então o Pokémon
+  realmente anda até o selvagem que vai enfrentar. Os demais selvagens da área passeiam pelo cenário. Dano flutuante,
+  crítico/super efetivo, desmaio (o corpo fica no chão alguns segundos), arremesso da Poké Ball em arco, captura,
+  recompensas, Centro Pokémon, dia/noite e 10 biomas desenhados em pixel art (SVG gerado, sem imagens externas).
+- **Mapa:** capítulos por ginásio (o atual e o próximo abertos), linhas enxutas com sprites e chances, cadeado compacto
+  com o que falta (Nv, insígnia, item) no lugar do texto "Requer…".
+- **Áreas:** Kanto 135, Johto 155, Hoenn 103, Sinnoh 153 (andares e zonas reais dos jogos, Ilhas Sevii, Kanto de HG/SS).
+
 ### Design System e interface
 - **Design System "hardware do Pokédex"** ([artifact](https://claude.ai/artifact/GDMyLsBF3LxAsWg9epbDKs)): chassi
   vermelho, telas LCD, azul de lente para interação, dourado para recompensas; temas Noite (padrão) e Dia; tipografia
@@ -70,7 +84,7 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
 ### Testes executados
 | O que | Resultado |
 |---|---|
-| `npm test` | 35 testes: Nível de Treinador, fórmulas com valores de referência, integridade dos dados, comandos, determinismo, evoluções, Centro Pokémon, regras de captura, conquistas, persistência e migrações, regressões da revisão |
+| `npm test` | 36 testes: encontro planejado, Nível de Treinador, fórmulas com valores de referência, integridade dos dados, comandos, determinismo, evoluções, Centro Pokémon, regras de captura, conquistas, persistência e migrações, regressões da revisão |
 | `npm run e2e` (Playwright) | ✓ Inicial → batalhas → as 11 telas → Hunt Analyzer → salvar/recarregar → 2 h offline com relatório → celular sem rolagem horizontal, 0 erros no console |
 | `npm run build` | OK. JS inicial ~60 kB gzip; dados ~150 kB gzip em chunks |
 | Playwright (manual) | Escolher inicial → batalhas/capturas com sprites animados → todas as telas → Hunt Analyzer → layout de celular → salvar/recarregar → **2 h offline com relatório**. 0 erros no console |
@@ -78,8 +92,9 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
 | Capturas de tela (Playwright) | Desktop e celular, temas Noite e Dia; filtro do Mapa destacando as rotas |
 
 ## 🔶 Em andamento
-- **Polimento visual (etapa 1.13):** ícones pixel próprios para a navegação e refinamento das telas secundárias (Loja,
-  Mochila, Pesquisa, Auto Manager, Análises, detalhe do Pokémon), animações de captura e evolução.
+- **Economia de itens de treinador (etapa 1.15):** melhorias como o Tênis de Corrida passam a ser itens fabricados com
+  fragmentos ou comprados de outros jogadores; a loja do jogo vende só buffs e cosméticos.
+- **Polimento das telas secundárias (etapa 1.16).**
 - **Balanceamento com Nível de Treinador:** Hoenn ficou mais rápido (20–24 h; antes 29–41 h). Confirmar no playtest se
   as faixas de Hoenn/Sinnoh devem subir (ver `docs/ECONOMY.md` §8).
 
@@ -101,5 +116,5 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
 - O progresso offline usa o horário do momento do retorno para regras de dia/noite.
 
 ## ▶️ Próxima tarefa sugerida
-Polimento visual (etapa 1.13) e playtest (1.14). Depois, decidir entre Postgres+Fastify e Firebase para o backend
+Economia de itens de treinador (1.15), polimento (1.16) e playtest (1.17). Depois, decidir entre Postgres+Fastify e Firebase para o backend
 (recomendação em docs/ARCHITECTURE.md §8) e iniciar a Fase 2.
