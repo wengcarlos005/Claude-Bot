@@ -28,6 +28,7 @@ Abra o endereço que o Vite mostrar (normalmente http://localhost:5173).
 | `npm run build:tokens` | Gera `src/ui/styles/tokens.css` a partir de `design/tokens.json` (tokens do Design System) |
 | `npm run e2e` | Teste de ponta a ponta no navegador (Playwright) |
 | `npm run sim -- 72 1` | Simulador de balanceamento: um bot joga 72 h (semente 1) e mostra o ritmo |
+| `npm run build:maplinks` | Regenera `src/data/generated/maplinks.json` (área → mapa dos jogos GBA; instruções no script) |
 | `npm run sprites:download` | Baixa os sprites para `public/assets/sprites` (opcional; ver abaixo) |
 
 ## Deploy

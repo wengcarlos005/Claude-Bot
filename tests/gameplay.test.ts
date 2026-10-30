@@ -23,8 +23,41 @@ describe('comandos', () => {
     expect(core.dispatch({ type: 'BuyItem', itemId: 'poke-ball', qty: 5 }).ok).toBe(true);
     expect(state.inventory['poke-ball']).toBe(15);
     expect(core.dispatch({ type: 'SelectArea', areaId: 'kanto-pewter-gym' }).ok).toBe(false);
+    expect(core.dispatch({ type: 'BuyUpgrade', upgradeId: 'running-shoes' }).ok).toBe(false); // sem fragmentos
+    state.inventory['red-shard'] = 4;
     expect(core.dispatch({ type: 'BuyUpgrade', upgradeId: 'running-shoes' }).ok).toBe(true);
+    expect(state.inventory['red-shard']).toBeUndefined();
+    expect(state.upgrades['running-shoes']).toBe(1);
     expect(core.dispatch({ type: 'BuyUpgrade', upgradeId: 'academy' }).ok).toBe(false); // exige 4 insígnias
+  });
+});
+
+describe('economia: loja, Oficina e fragmentos', () => {
+  it('a loja vende só bolas, remédios e buffs; o resto é fabricado com fragmentos', async () => {
+    const { core, state } = await newCore();
+    core.dispatch({ type: 'ChooseStarter', species: 'charmander' });
+    state.player.money = 1_000_000;
+    state.player.badges = ['boulder', 'cascade', 'thunder', 'rainbow', 'soul', 'marsh', 'volcano', 'earth'];
+    expect(core.dispatch({ type: 'BuyItem', itemId: 'everstone', qty: 1 }).ok).toBe(false);
+    expect(core.dispatch({ type: 'BuyItem', itemId: 'fire-stone', qty: 1 }).ok).toBe(false);
+    expect(core.dispatch({ type: 'BuyItem', itemId: 'hyper-potion', qty: 1 }).ok).toBe(true);
+    expect(core.dispatch({ type: 'BuyItem', itemId: 'repel', qty: 1 }).ok).toBe(true);
+    expect(core.dispatch({ type: 'Craft', itemId: 'fire-stone', qty: 1 }).ok).toBe(false);
+    state.inventory['red-shard'] = 5;
+    state.inventory['blue-shard'] = 2;
+    expect(core.dispatch({ type: 'Craft', itemId: 'fire-stone', qty: 1 }).ok).toBe(true);
+    expect(state.inventory['fire-stone']).toBe(1);
+    expect(state.inventory['red-shard']).toBeUndefined();
+    expect(core.dispatch({ type: 'SellItem', itemId: 'fire-stone', qty: 1 }).ok).toBe(true);
+    state.inventory['red-shard'] = 3;
+    expect(core.dispatch({ type: 'SellItem', itemId: 'red-shard', qty: 1 }).ok).toBe(false);
+  });
+
+  it('fragmentos caem nas hunts', async () => {
+    const { core, state } = await newCore(3);
+    core.dispatch({ type: 'ChooseStarter', species: 'squirtle' });
+    for (let i = 0; i < 18000; i++) core.tick(100);
+    expect(state.inventory['red-shard'] ?? 0).toBeGreaterThan(0);
   });
 });
 

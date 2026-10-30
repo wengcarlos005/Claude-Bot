@@ -1,6 +1,7 @@
 // Comandos do jogador: única forma de a UI alterar o estado. Cada comando valida e retorna Result.
 import type { GameContext } from './context';
 import { AVATARS } from '../data/content/avatars';
+import { canAfford, craftItem, nextUpgradeCost, pay, upgradeCraftCost } from './systems/crafting';
 import { upgradeLevel } from './bonuses';
 import { addPokemon, createPokemon, speciesOf } from './pokemon';
 import type { CaptureRule, GameState, Settings } from './state/types';
@@ -20,6 +21,7 @@ export type Command =
   | { type: 'UseItem'; itemId: string; uid?: string }
   | { type: 'HoldItem'; uid: string; itemId: string | null }
   | { type: 'BuyUpgrade'; upgradeId: string }
+  | { type: 'Craft'; itemId: string; qty: number }
   | { type: 'Transfer'; uids: string[] }
   | { type: 'ToggleLock'; uid: string }
   | { type: 'Rename'; uid: string; name: string }
@@ -40,6 +42,7 @@ export function upgradeCost(ctx: GameContext, state: GameState, id: string): num
   if (!u) return null;
   const lvl = upgradeLevel(state, id);
   if (lvl >= u.maxLevel) return null;
+  if (u.currency === 'money') return upgradeCraftCost(u, lvl).money;
   return Math.round(u.baseCost * Math.pow(u.growth, lvl));
 }
 
@@ -80,15 +83,18 @@ export function applyCommand(ctx: GameContext, state: GameState, cmd: Command): 
       return useItem(ctx, state, cmd.itemId, cmd.uid);
     case 'HoldItem':
       return holdItem(ctx, state, cmd.uid, cmd.itemId);
+    case 'Craft':
+      return craftItem(ctx, state, cmd.itemId, cmd.qty);
     case 'BuyUpgrade': {
       const u = ctx.data.upgrades.get(cmd.upgradeId);
       const cost = upgradeCost(ctx, state, cmd.upgradeId);
       if (!u || cost === null) return fail('Melhoria no nível máximo.');
       if (u.requires && !u.requires.every((r) => checkRequirement(state, r))) return fail('Requisito da melhoria não atendido.');
       if (u.currency === 'money') {
-        if (state.player.money < cost) return fail('Dinheiro insuficiente.');
-        state.player.money -= cost;
-        state.stats.moneySpent += cost;
+        // Melhorias de treinador são fabricadas: fragmentos + taxa em ₽.
+        const craft = nextUpgradeCost(ctx, state, u.id)!;
+        if (!canAfford(state, craft)) return fail('Fragmentos ou dinheiro insuficientes.');
+        pay(state, craft);
       } else {
         if (state.player.researchPoints < cost) return fail('Pontos de Pesquisa insuficientes.');
         state.player.researchPoints -= cost;

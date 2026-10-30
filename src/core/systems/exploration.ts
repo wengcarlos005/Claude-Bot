@@ -15,6 +15,7 @@ import { bestIvTotal, gainAffinity, registerCaught, registerSeen, shouldAutoTran
 import { autoBuy, autoHeal, ballMultiplier } from './items';
 import { awardDefeat, creditWin } from './progression';
 import { checkAchievements } from './achievements';
+import { dropFragments } from './crafting';
 
 const METHOD_SHARE: Record<string, number> = {
   walk: 70, surf: 25, 'old-rod': 6, 'good-rod': 8, 'super-rod': 10, 'rock-smash': 8, headbutt: 8,
@@ -375,6 +376,10 @@ function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, b
   if (shouldAutoTransfer(state, pk, room)) transferred = typeof transferPokemon(ctx, state, pk.uid) !== 'string';
   ctx.emit({ type: 'captured', uid: pk.uid, species: foe.species, shiny: foe.shiny, newSpecies: isNew, transferred });
   giveTrainerXp(ctx, state, TRAINER_XP.capture + (isNew ? TRAINER_XP.newSpecies : 0) + wildTrainerXp(foe.level));
+  const ri = regionIndex(ctx, area);
+  dropFragments(ctx, state, 'capture', ri);
+  if (foe.shiny) dropFragments(ctx, state, 'shiny', ri);
+  if (b.legendary) dropFragments(ctx, state, 'legendary', ri);
   // Captura também conta como vitória (XP e progresso da área, sem dinheiro).
   const xp = awardDefeat(ctx, state, bonuses, b.participants, foe.species, foe.level, false, area.xpMult);
   const active = state.pokemon[uid];
@@ -403,6 +408,10 @@ function foeFainted(ctx: GameContext, state: GameState, area: ResolvedArea, bonu
     return;
   }
   winBattle(ctx, state, area, bonuses, b, xp);
+}
+
+function regionIndex(ctx: GameContext, area: ResolvedArea): number {
+  return ctx.data.regions.findIndex((r) => r.id === area.regionId);
 }
 
 /** XP de Treinador por evento (calibrada no simulador — docs/ECONOMY.md). */
@@ -435,6 +444,8 @@ function winBattle(ctx: GameContext, state: GameState, area: ResolvedArea, bonus
   ctx.emit({ type: 'battleWon', kind: b.kind, money, xp });
 
   giveTrainerXp(ctx, state, b.kind === 'wild' ? wildTrainerXp(b.foe.level) : b.kind === 'trainer' ? TRAINER_XP.trainer + Math.floor(b.foe.level / 10) : TRAINER_XP.challenge);
+  const rematchLeague = b.kind === 'league' && state.player.champions.includes(area.regionId);
+  if (!rematchLeague) dropFragments(ctx, state, b.kind === 'wild' ? 'wild' : b.kind === 'trainer' ? 'trainer' : 'challenge', regionIndex(ctx, area));
   if (b.kind === 'wild') {
     state.stats.wildDefeated++;
     areaProgress(state, area.id).wins++;
@@ -508,6 +519,7 @@ function finishSequence(ctx: GameContext, state: GameState, area: ResolvedArea):
     state.player.badges.push(area.gym.badgeId);
     state.player.trainerXp += TRAINER_XP.badge;
     ctx.emit({ type: 'badge', badgeId: area.gym.badgeId, badgeName: area.gym.badgeName });
+    dropFragments(ctx, state, 'badge', regionIndex(ctx, area));
   }
   let rematch = false;
   if (area.league) {
@@ -516,6 +528,7 @@ function finishSequence(ctx: GameContext, state: GameState, area: ResolvedArea):
       state.player.champions.push(area.regionId);
       state.player.trainerXp += TRAINER_XP.champion;
       ctx.emit({ type: 'champion', regionId: area.regionId });
+      dropFragments(ctx, state, 'champion', regionIndex(ctx, area));
     }
   }
   if (reward && rematch) {

@@ -13,6 +13,7 @@ import { PcScreen } from './screens/Pc';
 import { PokedexScreen } from './screens/Pokedex';
 import { BagScreen, ShopScreen } from './screens/Items';
 import { ResearchScreen } from './screens/Research';
+import { WorkshopScreen } from './screens/Workshop';
 import { AutoManagerScreen } from './screens/AutoManager';
 import { StatsScreen } from './screens/Stats';
 import { SettingsScreen } from './screens/Settings';
@@ -28,6 +29,7 @@ const SCREENS: { id: string; label: string; icon: Icon; C: (p: ScreenProps) => p
   { id: 'pc', label: 'PC', icon: { item: 'storage-key' }, C: PcScreen },
   { id: 'bag', label: 'Inventário', icon: { item: 'explorer-kit' }, C: BagScreen },
   { id: 'shop', label: 'Loja', icon: { item: 'amulet-coin' }, C: ShopScreen },
+  { id: 'workshop', label: 'Oficina', icon: { item: 'up-grade' }, C: WorkshopScreen },
   { id: 'research', label: 'Pesquisa', icon: { item: 'journal' }, C: ResearchScreen },
   { id: 'auto', label: 'Automações', icon: { item: 'machine-part' }, C: AutoManagerScreen },
   { id: 'stats', label: 'Estatísticas', icon: { item: 'vs-recorder' }, C: StatsScreen },

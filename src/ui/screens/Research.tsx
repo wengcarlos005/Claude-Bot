@@ -24,15 +24,15 @@ export function ResearchScreen(_: ScreenProps) {
   };
   return (
     <div class="cols">
-      <Window title="Melhorias">
-        <p class="small muted">Melhorias em ₽ e em Pontos de Pesquisa (PP). PP vêm de novas espécies, treinadores, áreas concluídas, ginásios e transferências.</p>
+      <Window title="Melhorias de pesquisa">
+        <p class="small muted">Melhorias pagas em Pontos de Pesquisa (PP); as de treinador são fabricadas na Oficina. PP vêm de novas espécies, treinadores, áreas concluídas, ginásios e transferências.</p>
         <table class="table">
           <tbody>
-            {[...app.data.upgrades.values()].map((u) => {
+            {[...app.data.upgrades.values()].filter((u) => u.currency !== 'money').map((u) => {
               const lvl = upgradeLevel(s, u.id);
               const cost = upgradeCost(app.core.ctx, s, u.id);
               const reqOk = !u.requires || u.requires.every((r) => checkRequirement(s, r));
-              const afford = cost !== null && (u.currency === 'money' ? s.player.money >= cost : s.player.researchPoints >= cost);
+              const afford = cost !== null && s.player.researchPoints >= cost;
               return (
                 <tr key={u.id} class={reqOk ? '' : 'locked'}>
                   <td>
@@ -43,8 +43,8 @@ export function ResearchScreen(_: ScreenProps) {
                     {cost === null ? (
                       <span class="good small">Máximo</span>
                     ) : (
-                      <button class={`pk-btn pk-btn--sm ${u.currency === 'money' ? 'pk-btn--primary' : 'pk-btn--gold'}`} disabled={!afford || !reqOk} onClick={() => app.dispatch({ type: 'BuyUpgrade', upgradeId: u.id })}>
-                        {u.currency === 'money' ? `₽${fmt(cost)}` : `${fmt(cost)} PP`}
+                      <button class="pk-btn pk-btn--sm pk-btn--gold" disabled={!afford || !reqOk} onClick={() => app.dispatch({ type: 'BuyUpgrade', upgradeId: u.id })}>
+                        {fmt(cost)} PP
                       </button>
                     )}
                   </td>

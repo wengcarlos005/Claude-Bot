@@ -2,6 +2,7 @@
 // como um jogador casual que entra algumas vezes por dia.
 import type { GameCore } from './game';
 import { upgradeCost } from './commands';
+import { canAfford, itemCraftCost, nextUpgradeCost } from './systems/crafting';
 import { activeMember, maxHpOf, partyMembers, pokemonStats } from './pokemon';
 import { areaUnlocked, checkRequirement, isFarmArea, levelCap } from './world';
 import { availableEvolutions } from './systems/evolution';
@@ -48,9 +49,10 @@ export function botDecide(core: GameCore): void {
   for (const pk of Object.values(state.pokemon)) {
     for (const evo of data.species.get(pk.species)!.evolutions) {
       const it = evo.conditions.find((c) => c.type === 'item');
-      if (it && it.type === 'item' && shop.includes(it.itemId) && !(state.inventory[it.itemId] ?? 0)) {
-        const p = data.items.get(it.itemId)!.price!;
-        if (state.player.money > p * 5) core.dispatch({ type: 'BuyItem', itemId: it.itemId, qty: 1 });
+      if (it && it.type === 'item' && !(state.inventory[it.itemId] ?? 0)) {
+        // Pedras e itens de evolução saíram da loja: são fabricados na Oficina.
+        const cost = itemCraftCost(data.items.get(it.itemId)!);
+        if (cost && canAfford(state, cost) && state.player.money > cost.money * 5) core.dispatch({ type: 'Craft', itemId: it.itemId, qty: 1 });
       }
     }
   }
@@ -60,7 +62,8 @@ export function botDecide(core: GameCore): void {
     for (const u of data.upgrades.values()) {
       const cost = upgradeCost(ctx, state, u.id);
       if (cost === null || (u.requires && !u.requires.every((r) => checkRequirement(state, r)))) continue;
-      const afford = u.currency === 'money' ? cost <= state.player.money * 0.4 : cost <= state.player.researchPoints;
+      const craft = u.currency === 'money' ? nextUpgradeCost(ctx, state, u.id) : null;
+      const afford = craft ? craft.money <= state.player.money * 0.4 && canAfford(state, craft) : cost <= state.player.researchPoints;
       if (afford && (!pick || cost < pick.cost)) pick = { id: u.id, cost };
     }
     if (!pick) break;

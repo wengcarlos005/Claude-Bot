@@ -10,6 +10,7 @@ import { STAT_KEYS } from '../../data/types';
 import { isNight, levelCap } from '../world';
 import { canEvolve, evolve } from './evolution';
 import { giveExp } from './progression';
+import { SHOP_CATEGORIES } from './crafting';
 
 export type Result = { ok: true; message?: string } | { ok: false; error: string };
 const ok = (message?: string): Result => ({ ok: true, message });
@@ -100,7 +101,7 @@ export function holdItem(ctx: GameContext, state: GameState, uid: string, itemId
 
 export function shopAvailable(ctx: GameContext, state: GameState): ResolvedItem[] {
   const badges = state.player.badges.length;
-  return [...ctx.data.items.values()].filter((i) => i.price !== null && (i.shopBadges ?? 0) <= badges);
+  return [...ctx.data.items.values()].filter((i) => i.price !== null && SHOP_CATEGORIES.has(i.category) && (i.shopBadges ?? 0) <= badges);
 }
 
 export function buyItem(ctx: GameContext, state: GameState, itemId: string, qty: number): Result {
@@ -118,6 +119,7 @@ export function buyItem(ctx: GameContext, state: GameState, itemId: string, qty:
 export function sellItem(ctx: GameContext, state: GameState, itemId: string, qty: number): Result {
   const item = itemDef(ctx, itemId);
   if (item.category === 'key') return fail('Itens-chave não podem ser vendidos.');
+  if (item.category === 'material') return fail('Fragmentos não são vendidos à loja: use na Oficina (ou no Mercado, em breve).');
   if (!Number.isInteger(qty) || qty < 1 || (state.inventory[itemId] ?? 0) < qty) return fail('Quantidade inválida.');
   const unit = Math.floor((item.price ?? 1000) / 2);
   consume(state, itemId, qty);

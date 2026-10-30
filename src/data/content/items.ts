@@ -85,6 +85,11 @@ export const ITEMS: ItemDef[] = [
   { id: 'max-repel', description: '120 min de Repel.', category: 'boost', price: 1100, shopBadges: 5, effect: { kind: 'repel', minutes: 120 } },
 
   // ---------- Itens-chave ----------
+  // ---- Fragmentos (caem nas hunts; usados na Oficina; negociáveis no Mercado no futuro) ----
+  { id: 'red-shard', name: 'Fragmento Vermelho', description: 'Material comum. Cai de selvagens e treinadores.', category: 'material', price: null, effect: { kind: 'material' } },
+  { id: 'blue-shard', name: 'Fragmento Azul', description: 'Material incomum. Treinadores e desafios rendem mais.', category: 'material', price: null, effect: { kind: 'material' } },
+  { id: 'green-shard', name: 'Fragmento Verde', description: 'Material raro. Ginásios e Ligas garantem alguns.', category: 'material', price: null, effect: { kind: 'material' } },
+  { id: 'yellow-shard', name: 'Fragmento Amarelo', description: 'Material épico. Insígnias, títulos de Campeão, shinies e lendários.', category: 'material', price: null, effect: { kind: 'material' } },
   { id: 'bicycle', description: 'Reduz o intervalo entre encontros em 20%.', category: 'key', price: null, effect: { kind: 'key' } },
   { id: 'old-rod', description: 'Libera encontros de pesca (Vara Velha).', category: 'key', price: null, effect: { kind: 'key' } },
   { id: 'good-rod', description: 'Libera encontros de pesca (Vara Boa).', category: 'key', price: null, effect: { kind: 'key' } },

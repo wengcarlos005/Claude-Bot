@@ -50,6 +50,16 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
   vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
 - XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
 
+### Oficina, fragmentos e novo Hub (30/10)
+- **Fragmentos** (vermelho, azul, verde, amarelo) caem de selvagens, treinadores, desafios, insígnias, Campeão, shinies e
+  lendários; regiões avançadas rendem mais (×1,5 por região).
+- **Oficina:** melhorias de treinador (Tênis de Corrida, Moeda da Sorte etc.) e itens de evolução, seguráveis e
+  vitaminas são fabricados com fragmentos + taxa em ₽. A Loja vende só bolas, remédios e buffs. O bot também fabrica.
+- **Simulação (seed 1):** Brock 0,84 h, Campeão de Kanto 9,6 h, Johto 18,9 h, Hoenn 26,0 h.
+- **Hub novo:** Celadon City (mapa real do FireRed) em tela cheia, arrastável, com placas nos prédios (ícone, título e
+  descrição), tom de manhã/tarde/noite, equipe passeando pela praça e painéis flutuantes (hunt ativa, equipe e
+  próximo desafio com o sprite do líder).
+
 ### Direção de arte "jogo" (30/10, a partir das imagens de referência)
 - **Tema Noite azul-marinho**, barra superior com avatar do treinador (sprites de treinador, escolhidos em Ajustes),
   nível e XP, carteira (₽, PP, Pokédex) e menu lateral com ícones (sprites de itens + ícones pixel próprios).
@@ -106,9 +116,9 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
 | Capturas de tela (Playwright) | Desktop e celular, temas Noite e Dia; filtro do Mapa destacando as rotas |
 
 ## 🔶 Em andamento
-- **Economia de itens de treinador (etapa 1.15):** melhorias como o Tênis de Corrida passam a ser itens fabricados com
-  fragmentos ou comprados de outros jogadores; a loja do jogo vende só buffs e cosméticos.
-- **Polimento das telas secundárias (etapa 1.16).**
+- **Mercado de jogadores (etapa 1.16):** a Oficina já fabrica; falta a compra e venda entre jogadores (precisa do
+  backend).
+- **Polimento das telas secundárias (etapa 1.17).**
 - **Balanceamento com Nível de Treinador:** Hoenn ficou mais rápido (20–24 h; antes 29–41 h). Confirmar no playtest se
   as faixas de Hoenn/Sinnoh devem subir (ver `docs/ECONOMY.md` §8).
 
@@ -130,5 +140,5 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
 - O progresso offline usa o horário do momento do retorno para regras de dia/noite.
 
 ## ▶️ Próxima tarefa sugerida
-Economia de itens de treinador (1.15), polimento (1.16) e playtest (1.17). Depois, decidir entre Postgres+Fastify e Firebase para o backend
+Polimento das telas secundárias (1.17) e playtest. Mercado de jogadores junto com o backend. Depois, decidir entre Postgres+Fastify e Firebase para o backend
 (recomendação em docs/ARCHITECTURE.md §8) e iniciar a Fase 2.
