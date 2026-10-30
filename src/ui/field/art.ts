@@ -1,6 +1,7 @@
 // Arte em pixel da cena de rota: cada bioma tem paleta própria e elementos de cenário desenhados como "mapas de
 // caracteres" (1 caractere = 1 pixel) convertidos em SVG. Nada de imagem externa: o cenário pesa poucos KB.
 import type { ResolvedArea } from '../../data/registry';
+import { Px, hashString as hash, seeded } from '../art/pixel';
 
 export type Biome = 'grass' | 'forest' | 'cave' | 'snow' | 'sand' | 'beach' | 'volcano' | 'town' | 'indoor' | 'arena';
 
@@ -64,7 +65,6 @@ const STALAG = ['...h...', '..hR...', '..hRR..', '.hRRR..', '.hRRRd.', 'hRRRRdd'
 const CRYSTAL = ['..c..', '.cCc.', '.cCC.', 'cCCCd', '.CCd.'];
 const CACTUS = ['..GH..', '..GH..', 'H.GH..', 'GHGH.H', '.GGHGH', '..GHG.', '..GH..', '..GD..'];
 const EMBER = ['..h..', '.hgh.', 'hgggh', '.ggg.'];
-const LAMP = ['.lll.', '.lLl.', '..L..', '..L..', '..L..', '..L..', '.LLL.'];
 const SNOWMOUND = ['..hhhh..', '.hhhhhh.', 'hhhhhhhg', 'ghhhhhgg'];
 const CRATE = ['GGGGGGGG', 'GHHHHHHG', 'GHDHHDHG', 'GHHDDHHG', 'GHDHHDHG', 'GHHHHHHG', 'GGGGGGGG'];
 
@@ -72,18 +72,28 @@ export interface Decor {
   key: string;
   x: number;
   y: number;
-  /** Largura em px na tela. */
+  /** Largura em % da largura da cena. */
   w: number;
   img: string;
   /** Altura relativa à largura (para o aspect-ratio). */
   ratio: number;
 }
 
+export interface Clearing {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+}
+
 export interface FieldArt {
   biome: Biome;
-  background: string;
+  /** Chão em pixel art (data URI). */
+  ground: string;
   decor: Decor[];
-  /** Faixa vertical por onde os Pokémon andam (% da altura). */
+  /** Clareira onde os Pokémon andam e batalham (% da cena). */
+  clearing: Clearing;
+  /** Faixa vertical da clareira (compatibilidade). */
   walk: [number, number];
 }
 
@@ -101,74 +111,117 @@ export function biomeOf(area: ResolvedArea): Biome {
   return 'grass';
 }
 
-function hash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return h >>> 0;
+
+const LOG = ['..TTTTTTTTTT..', '.TtTTTTTTTTTt.', 'TtWtTTTTTTTTTt', 'TttTTTTTTTTTTt', '.TtTTTTTTTTTt.', '..tttttttttt..'];
+const BUSH = ['...GGGG...', '.GGHHGGGG.', 'GGHHGGGGDG', 'GHGGGFGGDG', 'GGGGGGGDDG', '.GDGGGDDG.', '..DDDDDD..'];
+
+/** Dentro da clareira (elipse em %)? */
+export function inClearing(c: Clearing, x: number, y: number, pad = 0): boolean {
+  return ((x - c.cx) / (c.rx - pad)) ** 2 + ((y - c.cy) / (c.ry - pad)) ** 2 <= 1;
 }
 
 export function fieldArt(area: ResolvedArea): FieldArt {
   const biome = biomeOf(area);
   const p = PALETTES[biome];
-  let seed = hash(area.id);
-  const rand = () => {
-    seed = (seed + 0x6d2b79f5) >>> 0;
-    let t = seed;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  const tile = art(
-    ['aaaaaaaabaaaaaaa', 'aaaaaaaaaaaaaaaa', 'aaasaaaaaaaaaaaa', 'aaaaaaaaaaaasaaa', 'aaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa',
-      'aaaaaaasaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'abaaaaaaaaaaaaaa', 'aaaaaaaaaaaaabaa', 'aaaaaaaaaaaaaaaa', 'aaaasaaaaaaaaaaa',
-      'aaaaaaaaaaaaaaaa', 'aaaaaaaaaasaaaaa', 'aaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa'],
-    { a: p.ground, b: p.ground2, s: p.speck },
-  );
-  const layers: string[] = [];
-  // Faixa de caminho (terra, calçada ou tapete) por onde a equipe anda.
-  const pathY = 58 + Math.round(rand() * 14);
-  layers.push(`linear-gradient(to bottom, transparent ${pathY - 9}%, ${p.pathEdge} ${pathY - 9}%, ${p.pathEdge} ${pathY - 8}%, ${p.path} ${pathY - 8}%, ${p.path} ${pathY + 8}%, ${p.pathEdge} ${pathY + 8}%, ${p.pathEdge} ${pathY + 9}%, transparent ${pathY + 9}%)`);
-  if (biome === 'beach') layers.unshift(`linear-gradient(to bottom, #4a8fd6 0, #5fa2e3 22%, #9fd0f2 26%, transparent 27%)`);
-  if (biome === 'arena') {
-    layers.unshift(
-      'radial-gradient(ellipse 18% 22% at 50% 62%, transparent 92%, #efe6d0 93%, #efe6d0 97%, transparent 98%)',
-      'linear-gradient(to right, transparent 49.6%, #efe6d0 49.6%, #efe6d0 50.4%, transparent 50.4%)',
-    );
+  const rand = seeded(hash(area.id));
+  const W = 192;
+  const H = 108;
+  const clearing: Clearing = { cx: 47, cy: 53, rx: 33, ry: 27 };
+  const g = new Px(W, H);
+  const lighten = biome === 'cave' || biome === 'volcano' || biome === 'indoor' ? p.ground2 : p.path;
+  // Chão com ruído; clareira um tom mais claro; bordas mais escuras (sombra das árvores/paredes).
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const dx = (x / W * 100 - clearing.cx) / clearing.rx;
+      const dy = (y / H * 100 - clearing.cy) / clearing.ry;
+      const d = dx * dx + dy * dy;
+      const n = rand();
+      let c = n < 0.07 ? p.speck : n < 0.16 ? p.ground2 : p.ground;
+      if (d > 1.3) c = n < 0.18 ? p.speck : p.ground2;
+      g.set(x, y, c);
+    }
   }
-  if (biome === 'indoor' || biome === 'cave' || biome === 'volcano') layers.unshift(`linear-gradient(to bottom, ${p.ink.D} 0, ${p.ink.G} 16%, transparent 24%)`);
-  const background = [...layers, `${tile} 0 0 / 48px 48px`].join(', ');
+  if (biome !== 'arena' && biome !== 'indoor') {
+    // Trilha sinuosa atravessando a clareira.
+    const phase = rand() * 10;
+    for (let x = 0; x < W; x++) {
+      const yc = H * 0.6 + Math.sin(x / 19 + phase) * 9 + Math.sin(x / 7) * 1.5;
+      for (let k = -4; k <= 4; k++) {
+        const c = Math.abs(k) === 4 ? p.pathEdge : rand() < 0.1 ? p.pathEdge : lighten;
+        g.set(x, yc + k, c);
+      }
+    }
+  }
+  if (biome === 'grass' || biome === 'forest' || biome === 'snow' || biome === 'town') {
+    // Lago num canto.
+    const right = rand() < 0.5;
+    const px0 = right ? W * 0.86 : W * 0.13;
+    const py0 = H * 0.86;
+    const water = biome === 'snow' ? ['#dff2ff', '#a9d8f5', '#7cc0ea'] : ['#cdeeff', '#5fb0ef', '#3f8fe0'];
+    g.ellipse(px0, py0, 19, 9, p.pathEdge);
+    g.ellipse(px0, py0, 17, 8, water[2]);
+    g.ellipse(px0 - 2, py0 - 1, 13, 5, water[1]);
+    for (let i = 0; i < 10; i++) g.set(px0 - 12 + rand() * 24, py0 - 4 + rand() * 7, water[0]);
+  }
+  if (biome === 'beach') {
+    for (let x = 0; x < W; x++) {
+      const shore = Math.round(H * 0.2 + Math.sin(x / 13) * 2.5);
+      for (let y = 0; y < shore; y++) g.set(x, y, (x + y * 5) % 29 === 0 ? '#a9dcff' : y > shore - 2 ? '#e9f6ff' : y > shore - 4 ? '#79c2f2' : '#3f8fe0');
+    }
+  }
+  if (biome === 'volcano') {
+    for (let i = 0; i < 5; i++) {
+      const lx = rand() * W, ly = rand() * H;
+      if (Math.abs(lx / W * 100 - 50) < 20) continue;
+      g.ellipse(lx, ly, 6 + rand() * 6, 3 + rand() * 2, '#c2421f');
+      g.ellipse(lx, ly, 3 + rand() * 3, 1 + rand() * 1.5, '#ffb35c');
+    }
+  }
+  if (biome === 'indoor') {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x % 12 === 0 || y % 12 === 0) g.set(x, y, p.speck);
+  }
+  if (biome === 'arena') {
+    g.ellipse(W / 2, H * 0.58, 26, 15, '#efe6d0');
+    g.ellipse(W / 2, H * 0.58, 24, 13, p.ground);
+    g.rect(W / 2, H * 0.12, 1, H * 0.8, '#efe6d0');
+    g.rect(W * 0.12, H * 0.12, W * 0.76, 1, '#efe6d0');
+    g.rect(W * 0.12, H * 0.92, W * 0.76, 1, '#efe6d0');
+  }
 
   const decor: Decor[] = [];
   const add = (rows: string[], x: number, y: number, w: number, key: string) =>
     decor.push({ key, x, y, w, img: art(rows, p.ink), ratio: rows.length / Math.max(...rows.map((r) => r.length)) });
-
-  // Fileira de fundo (árvores, pinheiros, rochas, estalagmites) + elementos espalhados.
-  const back = biome === 'grass' || biome === 'forest' || biome === 'town' ? TREE
-    : biome === 'snow' ? PINE : biome === 'sand' ? CACTUS : biome === 'cave' || biome === 'volcano' ? STALAG
-    : biome === 'indoor' ? CRATE : biome === 'beach' ? null : null;
-  if (back) {
-    const count = biome === 'forest' ? 11 : biome === 'sand' ? 5 : 8;
-    for (let i = 0; i < count; i++) {
-      const x = (i + 0.3 + rand() * 0.4) * (100 / count);
-      add(back, x, 18 + rand() * 10, back === TREE ? 64 + rand() * 12 : back === CACTUS ? 30 : 44, `b${i}`);
-    }
+  const edge = biome === 'grass' || biome === 'forest' || biome === 'town' ? [TREE, BUSH]
+    : biome === 'snow' ? [PINE, SNOWMOUND] : biome === 'sand' ? [CACTUS, ROCK] : biome === 'cave' || biome === 'volcano' ? [STALAG, ROCK]
+    : biome === 'indoor' ? [CRATE] : biome === 'beach' ? [ROCK, TUFT] : [];
+  // Moldura densa fora da clareira.
+  const edgeCount = biome === 'forest' ? 70 : biome === 'arena' || biome === 'beach' ? 0 : 52;
+  for (let i = 0, tries = 0; i < edgeCount && tries < 900; tries++) {
+    const x = rand() * 108 - 4;
+    const y = 4 + rand() * 104;
+    if (inClearing(clearing, x, y, -4)) continue;
+    const rows = edge[i % 4 === 3 && edge[1] ? 1 : 0];
+    const w = rows === TREE ? 9 + rand() * 4 : rows === PINE ? 7 + rand() * 3 : rows === STALAG ? 5 + rand() * 2.5 : rows === CACTUS ? 3 : 5 + rand() * 2;
+    add(rows, x, y, w, `e${i++}`);
   }
-  const scatter: [string[], number][] =
-    biome === 'grass' ? [[TUFT, 26], [TUFT, 26], [FLOWER, 12], [FLOWER2, 12], [ROCK, 24]]
-    : biome === 'forest' ? [[TUFT, 26], [TUFT, 26], [FLOWER, 12], [ROCK, 24]]
-    : biome === 'cave' ? [[ROCK, 26], [CRYSTAL, 18], [ROCK, 20]]
-    : biome === 'snow' ? [[SNOWMOUND, 30], [ROCK, 22]]
-    : biome === 'sand' ? [[ROCK, 22], [CACTUS, 24]]
-    : biome === 'beach' ? [[ROCK, 22], [FLOWER2, 10], [TUFT, 22]]
-    : biome === 'volcano' ? [[EMBER, 16], [ROCK, 24]]
-    : biome === 'town' ? [[LAMP, 18], [FLOWER, 12], [FLOWER2, 12], [TUFT, 24]]
-    : biome === 'indoor' ? [[CRATE, 26]] : [];
-  const n = biome === 'arena' ? 0 : 10;
-  for (let i = 0; i < n && scatter.length; i++) {
-    const [rows, w] = scatter[Math.floor(rand() * scatter.length)];
-    let y = 38 + rand() * 56;
-    if (Math.abs(y - pathY) < 10) y = y < pathY ? pathY - 12 : pathY + 12;
-    add(rows, 3 + rand() * 94, Math.min(97, y), w, `s${i}`);
+  // Detalhes dentro da clareira (poucos, para não poluir a batalha).
+  const inner: [string[], number][] =
+    biome === 'grass' || biome === 'town' ? [[TUFT, 2.2], [FLOWER, 1], [FLOWER2, 1], [ROCK, 2], [LOG, 4]]
+    : biome === 'forest' ? [[TUFT, 2.2], [FLOWER, 1], [LOG, 4.2], [ROCK, 2]]
+    : biome === 'cave' ? [[ROCK, 2.2], [CRYSTAL, 1.6]]
+    : biome === 'snow' ? [[SNOWMOUND, 2.6], [ROCK, 2]]
+    : biome === 'sand' ? [[ROCK, 2], [CACTUS, 2.2]]
+    : biome === 'beach' ? [[ROCK, 2], [FLOWER2, 1], [TUFT, 2]]
+    : biome === 'volcano' ? [[EMBER, 1.4], [ROCK, 2]]
+    : biome === 'indoor' ? [[CRATE, 2.4]] : [];
+  for (let i = 0; i < (inner.length ? 14 : 0); i++) {
+    const [rows, w] = inner[Math.floor(rand() * inner.length)];
+    const a = rand() * Math.PI * 2;
+    const k = 0.35 + rand() * 0.7;
+    add(rows, clearing.cx + Math.cos(a) * clearing.rx * k, clearing.cy + Math.sin(a) * clearing.ry * k, w, `i${i}`);
   }
-  return { biome, background, decor, walk: [Math.max(40, pathY - 22), Math.min(94, pathY + 22)] };
+  return {
+    biome, ground: g.uri(), decor, clearing,
+    walk: [clearing.cy - clearing.ry * 0.8, clearing.cy + clearing.ry * 0.85],
+  };
 }

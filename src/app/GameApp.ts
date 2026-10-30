@@ -51,6 +51,9 @@ export interface Fx {
   side: 'player' | 'foe';
   text?: string;
   tone?: 'crit' | 'super' | 'weak';
+  /** Golpe (ataques): nome e tipo, para o projétil colorido na cena. */
+  move?: string;
+  moveType?: string;
   success?: boolean;
   ball?: string;
 }
@@ -268,6 +271,7 @@ export class GameApp {
         this.pushFx({
           kind: e.missed ? 'miss' : 'hit', side: other(e.side), text: e.missed ? 'Errou' : `-${Math.max(1, Math.round(e.damage))}`,
           tone: e.crit ? 'crit' : e.effectiveness > 1 ? 'super' : e.effectiveness < 1 ? 'weak' : undefined,
+          move: this.data.moves.get(e.moveId)?.name, moveType: this.data.moves.get(e.moveId)?.type,
         });
       } else if (e.type === 'captureThrow') this.pushFx({ kind: 'throw', side: 'foe', success: e.success, ball: e.ball });
       else if (e.type === 'captured') this.pushFx({ kind: 'caught', side: 'foe', text: e.newSpecies ? 'Nova espécie!' : 'Capturado!' });
