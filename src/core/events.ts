@@ -18,6 +18,7 @@ export type GameEvent =
   | { type: 'champion'; regionId: string }
   | { type: 'areaCleared'; areaId: string }
   | { type: 'areaUnlocked'; areaId: string }
+  | { type: 'trainerLevelUp'; level: number }
   | { type: 'milestone'; id: string; caught: number }
   | { type: 'achievement'; id: string; name: string; rewardPP: number }
   | { type: 'healed'; reason: 'center' | 'potion' | 'revive' }

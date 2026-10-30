@@ -49,15 +49,18 @@ describe('persistência', () => {
 });
 
 describe('migrações', () => {
-  it('v1 → v2 adiciona conquistas sem perder dados', async () => {
+  it('v1 → v3: conquistas e XP de Treinador estimada pelo histórico, sem perder dados', async () => {
     const { core, state } = await newCore(2);
     core.dispatch({ type: 'ChooseStarter', species: 'squirtle' });
+    state.stats.battlesWon = 100;
     const v1: Record<string, any> = structuredClone(state);
     delete v1.achievements;
+    delete v1.player.trainerXp;
     v1.meta.saveVersion = 1;
     const migrated = migrate(v1);
-    expect(migrated.meta.saveVersion).toBe(2);
+    expect(migrated.meta.saveVersion).toBe(3);
     expect(migrated.achievements).toEqual([]);
+    expect(migrated.player.trainerXp).toBe(160); // 100 vitórias × 1,5 + 1 espécie × 10
     expect(migrated.party).toEqual(state.party);
   });
 });

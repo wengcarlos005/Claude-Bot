@@ -3,6 +3,7 @@ import type { TypeId } from '../types';
 
 export type Requirement =
   | { type: 'areaCleared'; areaId: string }
+  | { type: 'trainerLevel'; min: number }
   | { type: 'badge'; badgeId: string }
   | { type: 'badgeCount'; min: number }
   | { type: 'championOf'; regionId: string }
@@ -125,6 +126,8 @@ export interface RegionDef {
   name: string;
   order: number;
   unlock: Requirement[];
+  /** Faixa de Nível de Treinador exigida pelas áreas da região (primeira → última área). */
+  trainerLevels?: [number, number];
   /** Teto de nível por nº de insígnias desta região (índice 0..8). */
   levelCaps: number[];
   /** Teto após vencer a Liga da região. */

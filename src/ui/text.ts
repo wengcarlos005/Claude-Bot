@@ -12,6 +12,8 @@ export function requirementText(data: GameData, r: Requirement): string {
       for (const a of data.areas.values()) if (a.gym?.badgeId === r.badgeId) return a.gym.badgeName;
       return r.badgeId;
     }
+    case 'trainerLevel':
+      return `Treinador Nv ${r.min}`;
     case 'badgeCount':
       return `${r.min} insígnias`;
     case 'championOf':

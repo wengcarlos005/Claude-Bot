@@ -55,7 +55,7 @@ describe('simulação', () => {
     core.dispatch({ type: 'ChooseStarter', species: 'bulbasaur' });
     state.pokemon[state.party[0]].hp = 1;
     state.player.badges = ['boulder'];
-    state.world.areas['kanto-viridian-forest'] = { wins: 999, trainersDefeated: [], cleared: true, encounters: 0 };
+    state.player.trainerXp = 10_000;
     core.dispatch({ type: 'SelectArea', areaId: 'kanto-route-3' });
     for (let i = 0; i < 400 && state.exploration.phase !== 'healing'; i++) core.tick(250);
     expect(state.exploration.phase).toBe('healing');
@@ -202,5 +202,34 @@ describe('regressões da revisão de código', () => {
     const { data } = await newCore();
     const area = data.areas.get('sinnoh-route-202') ?? [...data.areas.values()].find((a) => a.regionId === 'sinnoh' && a.routeTrainers.length)!;
     expect(area.statMult).toBeGreaterThan(1);
+  });
+});
+
+describe('Nível de Treinador', () => {
+  it('libera as áreas por nível (com insígnias e itens-chave ainda valendo)', async () => {
+    const { core, state, data } = await newCore(21);
+    core.dispatch({ type: 'ChooseStarter', species: 'charmander' });
+    const { trainerLevel, trainerXpForLevel, areaUnlocked } = await import('../src/core/world');
+    const route2 = data.areas.get('kanto-route-2')!;
+    expect(route2.unlock).toContainEqual({ type: 'trainerLevel', min: route2.trainerLevel });
+    expect(route2.unlock.some((r) => r.type === 'areaCleared')).toBe(false);
+    expect(areaUnlocked(state, data, route2)).toBe(false);
+    state.player.trainerXp = trainerXpForLevel(route2.trainerLevel);
+    expect(trainerLevel(state)).toBe(route2.trainerLevel);
+    expect(areaUnlocked(state, data, route2)).toBe(true);
+    const route3 = data.areas.get('kanto-route-3')!;
+    state.player.trainerXp = trainerXpForLevel(50);
+    expect(areaUnlocked(state, data, route3)).toBe(false); // ainda exige a Insígnia Pedra
+    state.player.badges.push('boulder');
+    expect(areaUnlocked(state, data, route3)).toBe(true);
+  });
+
+  it('vitórias e capturas dão XP de Treinador e liberam a Rota 22 sem concluir a Rota 1', async () => {
+    const { core, state, data } = await newCore(22);
+    core.dispatch({ type: 'ChooseStarter', species: 'squirtle' });
+    simulate(data, state, 2 * 60_000, { now: () => Date.UTC(2026, 0, 1, 12) });
+    expect(state.player.trainerXp).toBeGreaterThanOrEqual(10);
+    expect(state.world.areas['kanto-route-1'].cleared).toBe(false);
+    expect(core.dispatch({ type: 'SelectArea', areaId: 'kanto-route-22' }).ok).toBe(true);
   });
 });

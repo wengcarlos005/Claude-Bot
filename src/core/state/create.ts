@@ -7,7 +7,7 @@ export function createInitialState(data: GameData, now: number, seed: number): G
   return {
     meta: { saveVersion: SAVE_VERSION, createdAt: now, lastTickAt: now, lastSavedAt: 0, revision: 0, playTimeMs: 0, nextUid: 1 },
     rng: { s: seed >>> 0 },
-    player: { name: 'Treinador', money: 3000, researchPoints: 0, badges: [], champions: [], starterChosen: false },
+    player: { name: 'Treinador', money: 3000, researchPoints: 0, trainerXp: 0, badges: [], champions: [], starterChosen: false },
     party: [],
     pokemon: {},
     pcCapacity: 150,
