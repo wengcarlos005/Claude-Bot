@@ -24,9 +24,14 @@ export function metricValue(state: GameState, m: AchievementMetric): number {
 }
 
 export function checkAchievements(ctx: GameContext, state: GameState): void {
+  const memo = new Map<AchievementMetric, number>();
+  const value = (m: AchievementMetric) => {
+    if (!memo.has(m)) memo.set(m, metricValue(state, m));
+    return memo.get(m)!;
+  };
   for (const a of ACHIEVEMENTS) {
     if (state.achievements.includes(a.id)) continue;
-    if (metricValue(state, a.metric) < a.target) continue;
+    if (value(a.metric) < a.target) continue;
     state.achievements.push(a.id);
     state.player.researchPoints += a.rewardPP;
     ctx.emit({ type: 'achievement', id: a.id, name: a.name, rewardPP: a.rewardPP });

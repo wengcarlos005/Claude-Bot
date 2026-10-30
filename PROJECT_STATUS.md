@@ -37,6 +37,14 @@ _Última atualização: 30/10/2026 (sessão noturna de desenvolvimento)._
 ### Persistência
 - IndexedDB/localStorage, gzip + checksum, 2 backups rotativos, migrações e exportar/importar.
 
+### Adições da madrugada
+- **Conquistas** (25, com recompensa em PP), com save na v2 e migração automática v1→v2 testada.
+- **Dicas contextuais** de onboarding na tela Explorar.
+- **PWA instalável** (manifest + service worker com cache do app).
+- **Revisão de código independente** do core: 11 achados corrigidos, com testes de regressão. Entre eles: obediência
+  também nos PS, Tier no primeiro Pokémon dos treinadores, pausas longas viram progresso offline, saves ilegíveis vão
+  para quarentena, transferência atômica e validação de configurações.
+
 ### Interface (Preact, responsiva)
 - Telas: Explorar, Mapa, Equipe, PC, Pokédex, Mochila, Loja, Pesquisa, Auto Manager, Análises e Config.
 - Modais de inicial, retorno offline e detalhe do Pokémon.
@@ -49,7 +57,8 @@ _Última atualização: 30/10/2026 (sessão noturna de desenvolvimento)._
 ### Testes executados
 | O que | Resultado |
 |---|---|
-| `npm test` | 27 testes: fórmulas com valores de referência, integridade dos dados, comandos, determinismo, evoluções, Centro Pokémon, regras de captura, persistência |
+| `npm test` | 33 testes: fórmulas com valores de referência, integridade dos dados, comandos, determinismo, evoluções, Centro Pokémon, regras de captura, conquistas, persistência e migrações, regressões da revisão |
+| `npm run e2e` (Playwright) | ✓ Inicial → batalhas → as 11 telas → Hunt Analyzer → salvar/recarregar → 2 h offline com relatório → celular sem rolagem horizontal, 0 erros no console |
 | `npm run build` | OK. JS inicial ~60 kB gzip; dados ~150 kB gzip em chunks |
 | Playwright (manual) | Escolher inicial → batalhas/capturas com sprites animados → todas as telas → Hunt Analyzer → layout de celular → salvar/recarregar → **2 h offline com relatório**. 0 erros no console |
 | Simulador | Kanto: Campeão em 8,3–11,7 h simuladas (3–4 sementes) |
@@ -59,20 +68,21 @@ _Última atualização: 30/10/2026 (sessão noturna de desenvolvimento)._
   última rodada em `docs/ECONOMY.md` §8.
 
 ## ⏳ Pendente (próximas etapas — ver docs/ROADMAP.md)
-1. Polimento: tutorial dos primeiros minutos, conquistas, PWA (instalável/offline), áudio, acessibilidade (auditoria
-   Lighthouse).
+1. Polimento: áudio, auditoria de acessibilidade/Lighthouse, ícones dedicados por geração.
 2. Backend autoritativo (Fastify + Postgres rodando o mesmo core), contas e cloud save.
 3. Ranking por temporada, mercado com escrow, guildas, PvP, raids.
 4. Status de batalha e habilidades, variantes regionais, breeding, eventos sazonais.
-5. Teste E2E automatizado no CI (o roteiro Playwright existe e foi executado manualmente).
+5. Rodar o E2E (`npm run e2e`) também no CI (exige instalar o Chromium no runner).
 
 ## 🐞 Bugs conhecidos / limitações
-- O teste E2E ainda não está no repositório/CI; a verificação foi manual com Playwright.
+- O E2E está no repositório (`npm run e2e`), mas ainda não roda no CI.
+- Com farm de Afinidade por muitas horas, o PC acumula milhares de Pokémon de nota A/S (protegidos por padrão). Hoje o
+  custo de cada captura cresce com o tamanho do PC. Avaliar um índice por espécie ou a proteção padrão só para S.
 - O balanceamento de Johto, Hoenn e Sinnoh foi validado só com o bot (que não adapta a equipe por tipo). Precisa de
   playtest.
 - Ícones pequenos usam o sprite de frente reduzido (sem ícones dedicados para todas as gerações).
 - O progresso offline usa o horário do momento do retorno para regras de dia/noite.
 
 ## ▶️ Próxima tarefa sugerida
-Playtest do início (primeira hora) e de uma transição de região. Em seguida, implementar o tutorial e as conquistas
-(etapa 9) antes de começar o backend.
+Playtest do início (primeira hora) e de uma transição de região (Kanto → Johto). Depois, decidir entre Postgres+Fastify
+e Firebase para o backend (recomendação em docs/ARCHITECTURE.md §8) e iniciar a etapa 10.

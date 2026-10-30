@@ -35,7 +35,21 @@ export function upgradeLevel(state: GameState, id: string): number {
   return state.upgrades[id] ?? 0;
 }
 
+const cache = new WeakMap<GameState, { key: string; value: Bonuses }>();
+
+/** Bônus globais com cache: só recalcula quando melhorias, marcos ou itens-chave relevantes mudam. */
 export function computeBonuses(state: GameState, data: GameData): Bonuses {
+  const inv = state.inventory;
+  let key = `${state.milestonesClaimed.length}|${inv['oval-charm'] ?? 0}|${inv['shiny-charm'] ?? 0}|${inv['bicycle'] ?? 0}`;
+  for (const id in state.upgrades) key += `|${id}:${state.upgrades[id]}`;
+  const hit = cache.get(state);
+  if (hit && hit.key === key) return hit.value;
+  const value = computeBonusesUncached(state, data);
+  cache.set(state, { key, value });
+  return value;
+}
+
+function computeBonusesUncached(state: GameState, data: GameData): Bonuses {
   let xp = 0;
   let money = 0;
   let capture = 0;

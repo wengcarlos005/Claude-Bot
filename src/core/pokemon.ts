@@ -148,7 +148,9 @@ export function createPokemon(ctx: GameContext, state: GameState, speciesKey: st
 }
 
 export function pcCount(state: GameState): number {
-  return Object.keys(state.pokemon).length - state.party.length;
+  let n = 0;
+  for (const _ in state.pokemon) n++;
+  return n - state.party.length;
 }
 
 export function hasRoom(state: GameState): boolean {

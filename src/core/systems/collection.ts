@@ -82,6 +82,20 @@ export function transferPokemon(ctx: GameContext, state: GameState, uid: string)
   return value;
 }
 
+/** Quantidade e melhor soma de IVs da espécie, numa única passada pela coleção. */
+export function speciesHoldings(state: GameState, species: string, exceptUid?: string): { count: number; bestIv: number } {
+  let count = 0;
+  let bestIv = -1;
+  for (const uid in state.pokemon) {
+    const p = state.pokemon[uid];
+    if (p.species !== species || uid === exceptUid) continue;
+    count++;
+    const t = ivTotal(p.ivs);
+    if (t > bestIv) bestIv = t;
+  }
+  return { count, bestIv };
+}
+
 /** Melhor soma de IVs entre os Pokémon da espécie que o jogador possui. */
 export function bestIvTotal(state: GameState, species: string, exceptUid?: string): number {
   let best = -1;
@@ -95,10 +109,12 @@ export function gradeAtLeast(grade: string, min: string): boolean {
 }
 
 /** Decide se uma captura recém-feita deve ser transferida automaticamente (Auto Manager). */
-export function shouldAutoTransfer(state: GameState, pk: OwnedPokemon, ownedBefore: number, roomAvailable: boolean): boolean {
-  if (pk.shiny || pk.locked || ownedBefore === 0) return false;
+export function shouldAutoTransfer(state: GameState, pk: OwnedPokemon, roomAvailable: boolean): boolean {
+  if (pk.shiny || pk.locked) return false;
   if (gradeAtLeast(ivGrade(pk.ivs), state.settings.protectGrade)) return false;
-  const better = ivTotal(pk.ivs) > bestIvTotal(state, pk.species, pk.uid);
+  const others = speciesHoldings(state, pk.species, pk.uid);
+  if (others.count === 0) return false;
+  const better = ivTotal(pk.ivs) > others.bestIv;
   if (better) return false;
   return state.settings.autoTransfer || !roomAvailable;
 }

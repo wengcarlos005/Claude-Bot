@@ -335,7 +335,6 @@ function throwBall(ctx: GameContext, state: GameState, area: ResolvedArea, bonus
 
 function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, bonuses: Bonuses, b: BattleState, uid: string, ball: string): void {
   const foe = b.foe;
-  const ownedBefore = Object.values(state.pokemon).filter((p) => p.species === foe.species).length;
   const room = hasRoom(state);
   const pk = createPokemon(ctx, state, foe.species, foe.level, { shiny: foe.shiny, origin: 'wild', area: area.id, ball, ivs: foe.ivs });
   addPokemon(state, pk);
@@ -345,7 +344,7 @@ function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, b
   state.hunt.captures++;
   if (foe.shiny) state.stats.shiniesCaught++;
   let transferred = false;
-  if (shouldAutoTransfer(state, pk, ownedBefore, room)) transferred = typeof transferPokemon(ctx, state, pk.uid) !== 'string';
+  if (shouldAutoTransfer(state, pk, room)) transferred = typeof transferPokemon(ctx, state, pk.uid) !== 'string';
   ctx.emit({ type: 'captured', uid: pk.uid, species: foe.species, shiny: foe.shiny, newSpecies: isNew, transferred });
   // Captura também conta como vitória (XP e progresso da área, sem dinheiro).
   const xp = awardDefeat(ctx, state, bonuses, b.participants, foe.species, foe.level, false, area.xpMult);
