@@ -1,6 +1,6 @@
 // GameData: carrega os dados gerados + conteúdo autoral, valida referências e cria índices O(1).
 import type { EncounterSlot, GeneratedItem, LocationEncounters, Move, Species, TypeChart } from './types';
-import type { AreaDef, ItemDef, MilestoneDef, RegionDef, TrainerDef, UpgradeDef } from './content/types';
+import type { AreaDef, ItemDef, MilestoneDef, RegionDef, Requirement, TrainerDef, UpgradeDef } from './content/types';
 import { EVOLUTION_STONES, ITEMS } from './content/items';
 import { MILESTONES, UPGRADES } from './content/upgrades';
 import { REGIONS } from './content/regions';
@@ -17,12 +17,36 @@ export interface ResolvedItem extends ItemDef {
   name: string;
 }
 
+/** Faixa padrão de Nível de Treinador por região (primeira → última área), se a região não definir a sua. */
+const DEFAULT_TRAINER_LEVELS: Record<string, [number, number]> = {
+  kanto: [1, 30], johto: [30, 42], hoenn: [42, 62], sinnoh: [62, 85],
+};
+
+/**
+ * Progressão por Nível de Treinador: requisitos "concluir a área X" do conteúdo autoral viram um Nível de Treinador
+ * que cresce ao longo da região (na ordem das áreas). Insígnias, itens-chave e títulos de Campeão continuam valendo.
+ */
+function toTrainerLevelUnlock(reqs: Requirement[], level: number): Requirement[] {
+  const strip = (r: Requirement): Requirement | null => {
+    if (r.type === 'areaCleared') return null;
+    if (r.type === 'anyOf') {
+      const of = r.of.map(strip).filter(Boolean) as Requirement[];
+      return of.length === r.of.length ? r : null; // um "ou" que dependia de concluir área vira só o nível
+    }
+    return r;
+  };
+  const kept = reqs.map(strip).filter(Boolean) as Requirement[];
+  return level > 1 ? [{ type: 'trainerLevel', min: level }, ...kept] : kept;
+}
+
 export interface ResolvedArea extends AreaDef {
   regionId: string;
   /** Slots combinados de todos os locais, com níveis já transformados pela região. */
   slots: EncounterSlot[];
   routeTrainers: TrainerDef[];
   levelRange: [number, number];
+  /** Nível de Treinador exigido (já incluído em `unlock`). */
+  trainerLevel: number;
   statMult: number;
   xpMult: number;
   winsMult: number;
@@ -176,8 +200,12 @@ export function createGameData(raw: RawData): GameData {
         .filter(Boolean)
         .flatMap((tr) => tr!.team.map((m) => transformLevel(region, m.level)));
       const all = [...levels, ...trainerLevels];
+      const [tl0, tl1] = region.trainerLevels ?? DEFAULT_TRAINER_LEVELS[region.id] ?? [1, 1];
+      const trainerLevel = Math.round(n > 1 ? tl0 + ((tl1 - tl0) * idx) / (n - 1) : tl0);
       areas.set(area.id, {
         ...area,
+        unlock: toTrainerLevelUnlock(area.unlock, trainerLevel),
+        trainerLevel,
         regionId: region.id,
         slots,
         routeTrainers: buildRouteTrainers(region, area, slots),

@@ -8,6 +8,14 @@ type Migration = (s: Record<string, any>) => Record<string, any>;
 const MIGRATIONS: Record<number, Migration> = {
   // v1 → v2: conquistas.
   1: (s) => ({ ...s, achievements: [] }),
+  // v2 → v3: Nível de Treinador. XP inicial estimada pelo histórico, para não bloquear áreas que o jogador já usava.
+  2: (s) => ({
+    ...s,
+    player: {
+      ...s.player,
+      trainerXp: Math.round((s.stats?.battlesWon ?? 0) * 1.5 + (s.stats?.captures ?? 0) * 2 + Object.values(s.pokedex ?? {}).filter((e: any) => e.caught > 0).length * 10),
+    },
+  }),
 };
 
 export function migrate(raw: Record<string, any>): GameState {

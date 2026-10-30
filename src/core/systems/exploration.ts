@@ -9,7 +9,7 @@ import { captureChance } from '../formulas/capture';
 import { ivTotal } from '../formulas/stats';
 import { activeMember, addPokemon, createPokemon, hasRoom, maxHpOf, partyMembers, speciesOf, toCombatant, wildCombatant } from '../pokemon';
 import type { BattleKind, BattleState, CaptureRule, Combatant, GameState } from '../state/types';
-import { addItem, announceUnlocks, areaProgress, areaUnlocked, checkAreaCleared, isFarmArea, levelCap, timeOfDay, unlockedAreaIds } from '../world';
+import { addItem, announceUnlocks, areaProgress, areaUnlocked, checkAreaCleared, giveTrainerXp, isFarmArea, levelCap, timeOfDay, unlockedAreaIds } from '../world';
 import { attack, roundOrder } from './battle';
 import { bestIvTotal, gainAffinity, registerCaught, registerSeen, shouldAutoTransfer, transferPokemon } from './collection';
 import { autoBuy, autoHeal, ballMultiplier } from './items';
@@ -347,6 +347,7 @@ function finishCapture(ctx: GameContext, state: GameState, area: ResolvedArea, b
   let transferred = false;
   if (shouldAutoTransfer(state, pk, room)) transferred = typeof transferPokemon(ctx, state, pk.uid) !== 'string';
   ctx.emit({ type: 'captured', uid: pk.uid, species: foe.species, shiny: foe.shiny, newSpecies: isNew, transferred });
+  giveTrainerXp(ctx, state, TRAINER_XP.capture + (isNew ? TRAINER_XP.newSpecies : 0) + wildTrainerXp(foe.level));
   // Captura também conta como vitória (XP e progresso da área, sem dinheiro).
   const xp = awardDefeat(ctx, state, bonuses, b.participants, foe.species, foe.level, false, area.xpMult);
   const active = state.pokemon[uid];
@@ -377,6 +378,12 @@ function foeFainted(ctx: GameContext, state: GameState, area: ResolvedArea, bonu
   winBattle(ctx, state, area, bonuses, b, xp);
 }
 
+/** XP de Treinador por evento (calibrada no simulador — docs/ECONOMY.md). */
+export const TRAINER_XP = { capture: 2, newSpecies: 10, trainer: 5, challenge: 10, badge: 60, champion: 200 };
+export function wildTrainerXp(_foeLevel: number): number {
+  return 1;
+}
+
 const DROPS: { id: string; w: number; badges: number }[] = [
   { id: 'poke-ball', w: 30, badges: 0 }, { id: 'potion', w: 25, badges: 0 }, { id: 'great-ball', w: 12, badges: 1 },
   { id: 'super-potion', w: 8, badges: 2 }, { id: 'ultra-ball', w: 6, badges: 4 }, { id: 'revive', w: 4, badges: 3 },
@@ -400,6 +407,7 @@ function winBattle(ctx: GameContext, state: GameState, area: ResolvedArea, bonus
   state.exploration.lossStreak = 0;
   ctx.emit({ type: 'battleWon', kind: b.kind, money, xp });
 
+  giveTrainerXp(ctx, state, b.kind === 'wild' ? wildTrainerXp(b.foe.level) : b.kind === 'trainer' ? TRAINER_XP.trainer + Math.floor(b.foe.level / 10) : TRAINER_XP.challenge);
   if (b.kind === 'wild') {
     state.stats.wildDefeated++;
     areaProgress(state, area.id).wins++;
@@ -471,6 +479,7 @@ function finishSequence(ctx: GameContext, state: GameState, area: ResolvedArea):
   const reward = area.gym?.reward ?? area.league?.reward;
   if (area.gym && !state.player.badges.includes(area.gym.badgeId)) {
     state.player.badges.push(area.gym.badgeId);
+    state.player.trainerXp += TRAINER_XP.badge;
     ctx.emit({ type: 'badge', badgeId: area.gym.badgeId, badgeName: area.gym.badgeName });
   }
   let rematch = false;
@@ -478,6 +487,7 @@ function finishSequence(ctx: GameContext, state: GameState, area: ResolvedArea):
     rematch = state.player.champions.includes(area.regionId);
     if (!rematch) {
       state.player.champions.push(area.regionId);
+      state.player.trainerXp += TRAINER_XP.champion;
       ctx.emit({ type: 'champion', regionId: area.regionId });
     }
   }

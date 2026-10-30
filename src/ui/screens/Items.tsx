@@ -27,7 +27,7 @@ export function BagScreen({ go }: ScreenProps) {
           ))}
         </Window>
       )}
-      <Window title="Mochila" actions={<button class="btn btn-sm" onClick={() => go('shop')}>Ir à loja</button>}>
+      <Window title="Mochila" actions={<button class="pk-btn pk-btn--sm" onClick={() => go('shop')}>Ir à loja</button>}>
         {!owned.length && <Empty>Mochila vazia.</Empty>}
         {CATS.map((c) => {
           const items = owned.filter(([id]) => app.data.items.get(id)?.category === c.id);
@@ -44,10 +44,10 @@ export function BagScreen({ go }: ScreenProps) {
                         <td style={{ width: '32px' }}><ItemIcon id={id} sprite={it.sprite} /></td>
                         <td><b>{it.name}</b> <span class="muted">×{q}</span><div class="small muted">{it.description}</div></td>
                         <td class="right">
-                          {it.category === 'boost' && <button class="btn btn-sm" onClick={() => app.dispatch({ type: 'UseItem', itemId: id })}>Usar</button>}
+                          {it.category === 'boost' && <button class="pk-btn pk-btn--sm" onClick={() => app.dispatch({ type: 'UseItem', itemId: id })}>Usar</button>}
                           {['medicine', 'evolution', 'held', 'vitamin'].includes(it.category) && <span class="small muted">Use pela tela do Pokémon</span>}
                           {it.category !== 'key' && (
-                            <button class="btn btn-sm btn-ghost" onClick={() => app.dispatch({ type: 'SellItem', itemId: id, qty: 1 })} title="Vende pela metade do preço">
+                            <button class="pk-btn pk-btn--sm pk-btn--ghost" onClick={() => app.dispatch({ type: 'SellItem', itemId: id, qty: 1 })} title="Vende pela metade do preço">
                               Vender (₽{fmt(Math.floor((it.price ?? 1000) / 2))})
                             </button>
                           )}
@@ -78,7 +78,7 @@ export function ShopScreen(_: ScreenProps) {
         <div class="row">
           <span class="small muted">Quantidade:</span>
           {[1, 10, 50, 100].map((n) => (
-            <button key={n} class={`btn btn-sm ${qty === n ? 'btn-gold' : ''}`} onClick={() => setQty(n)}>×{n}</button>
+            <button key={n} class={`pk-btn pk-btn--sm ${qty === n ? 'pk-btn--gold' : ''}`} onClick={() => setQty(n)}>×{n}</button>
           ))}
         </div>
       }
@@ -97,7 +97,7 @@ export function ShopScreen(_: ScreenProps) {
                     <td><b>{it.name}</b> <span class="muted small">(tem {s.inventory[it.id] ?? 0})</span><div class="small muted">{it.description}</div></td>
                     <td class="num right">₽{fmt(it.price!)}</td>
                     <td class="right">
-                      <button class="btn btn-sm btn-primary" disabled={s.player.money < it.price! * qty} onClick={() => app.dispatch({ type: 'BuyItem', itemId: it.id, qty })}>
+                      <button class="pk-btn pk-btn--sm pk-btn--primary" disabled={s.player.money < it.price! * qty} onClick={() => app.dispatch({ type: 'BuyItem', itemId: it.id, qty })}>
                         Comprar ×{qty}
                       </button>
                     </td>

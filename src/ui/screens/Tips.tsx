@@ -19,12 +19,12 @@ export function Tips({ go }: ScreenProps) {
   if (s.player.researchPoints >= 10 && Object.keys(s.upgrades).length === 0) tips.push({ text: 'Você tem Pontos de Pesquisa para gastar em melhorias permanentes.', action: { label: 'Pesquisa', screen: 'research' } });
   if (!tips.length || s.player.badges.length >= 4) return null;
   return (
-    <Window title="💡 Dicas">
+    <Window title="Próximos passos">
       <div class="stack" style={{ gap: '6px' }}>
         {tips.slice(0, 3).map((t) => (
           <div key={t.text} class="row spread small">
             <span>{t.text}</span>
-            {t.action && <button class="btn btn-sm" onClick={() => go(t.action!.screen)}>{t.action.label}</button>}
+            {t.action && <button class="pk-btn pk-btn--sm" onClick={() => go(t.action!.screen)}>{t.action.label}</button>}
           </div>
         ))}
       </div>

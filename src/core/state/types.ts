@@ -2,7 +2,7 @@
 import type { Stats, TypeId } from '../../data/types';
 import type { RngState } from '../engine/rng';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const MAX_PARTY = 6;
 
 export interface OwnedPokemon {
@@ -165,6 +165,8 @@ export interface GameState {
     name: string;
     money: number;
     researchPoints: number;
+    /** XP de Treinador acumulada (o Nível de Treinador libera áreas). */
+    trainerXp: number;
     badges: string[];
     champions: string[];
     starterChosen: boolean;

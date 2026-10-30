@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { ScreenProps } from '../App';
-import { Empty, Grade, Sprite, Window, fmt, useApp } from '../components';
+import { CroppedSprite, Empty, Grade, Window, fmt, useApp } from '../components';
 import { PokemonDetail } from './PokemonDetail';
 import { displayName, pcCount, speciesOf } from '../../core/pokemon';
 import { ivGrade, ivTotal } from '../../core/formulas/stats';
@@ -54,7 +54,7 @@ export function PcScreen(_: ScreenProps) {
             <option value="iv">IVs</option>
           </select>
           <label class="row small"><input type="checkbox" checked={onlyShiny} onChange={() => setOnlyShiny(!onlyShiny)} /> Shiny</label>
-          <button class={`btn btn-sm ${selecting ? 'btn-gold' : ''}`} onClick={() => { setSelecting(!selecting); setSelected([]); }}>
+          <button class={`pk-btn pk-btn--sm ${selecting ? 'pk-btn--gold' : ''}`} onClick={() => { setSelecting(!selecting); setSelected([]); }}>
             {selecting ? 'Cancelar seleção' : 'Selecionar vários'}
           </button>
         </>
@@ -62,9 +62,9 @@ export function PcScreen(_: ScreenProps) {
     >
       {selecting && (
         <div class="row spread" style={{ marginBottom: '10px' }}>
-          <span class="small">{selected.length} selecionado(s) · Transferir rende ₽{fmt(value.money)} e {value.research} PP. Pokémon protegidos 🔒 são ignorados.</span>
+          <span class="small">{selected.length} selecionado(s) · Transferir rende ₽{fmt(value.money)} e {value.research} PP. Pokémon protegidos são ignorados.</span>
           <button
-            class="btn btn-sm btn-danger"
+            class="pk-btn pk-btn--sm pk-btn--danger"
             disabled={!selected.length}
             onClick={() => {
               const uids = selected.filter((u) => !s.pokemon[u]?.locked);
@@ -81,19 +81,17 @@ export function PcScreen(_: ScreenProps) {
       {list.length === 0 ? (
         <Empty>Nenhum Pokémon no PC. Capturas além da equipe de 6 vêm para cá.</Empty>
       ) : (
-        <div class="grid-mons">
+        <div class="pk-tiles">
           {list.slice(0, 600).map((p) => {
             const sp = speciesOf(app.data, p.species);
             return (
-              <div key={p.uid} class={`mon-cell ${selected.includes(p.uid) ? 'selected' : ''}`} onClick={() => (selecting ? toggle(p.uid) : setOpen(p.uid))}>
-                <div class="badges">
-                  <span>{p.shiny ? '✨' : ''}{p.locked ? '🔒' : ''}</span>
-                  <Grade grade={ivGrade(p.ivs)} />
-                </div>
-                <Sprite id={sp.id} shiny={p.shiny} size={64} />
-                <span>{displayName(app.data, p)}</span>
-                <span class="muted">Nv{p.level}</span>
-              </div>
+              <button key={p.uid} class="pk-tile" aria-selected={selected.includes(p.uid)} onClick={() => (selecting ? toggle(p.uid) : setOpen(p.uid))}>
+                <span class="pk-tile__no">{p.shiny ? <span class="pk-shiny">✦</span> : ''}{p.locked ? 'P' : ''}</span>
+                <span class="pk-tile__mark"><Grade grade={ivGrade(p.ivs)} /></span>
+                <CroppedSprite id={sp.id} shiny={p.shiny} box={72} />
+                <span class="pk-tile__name">{displayName(app.data, p)}</span>
+                <span class="pk-muted">Nv {p.level}</span>
+              </button>
             );
           })}
         </div>

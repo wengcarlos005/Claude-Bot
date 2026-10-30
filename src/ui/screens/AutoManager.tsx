@@ -57,14 +57,14 @@ export function AutoManagerScreen(_: ScreenProps) {
                 <label class="row small" title="Se a bola acabar, usa a mais barata disponível (nunca a Master Ball)">
                   <input type="checkbox" checked={r.fallback} onChange={() => upd(i, { fallback: !r.fallback })} /> reserva
                 </label>
-                <button class="btn btn-sm btn-ghost" onClick={() => moveRule(i, -1)} aria-label="Subir">▲</button>
-                <button class="btn btn-sm btn-ghost" onClick={() => moveRule(i, 1)} aria-label="Descer">▼</button>
-                {r.when === 'species' && <button class="btn btn-sm btn-ghost" onClick={() => setRules(rules.filter((_, j) => j !== i))}>✕</button>}
+                <button class="pk-btn pk-btn--sm pk-btn--ghost" onClick={() => moveRule(i, -1)} aria-label="Subir">▲</button>
+                <button class="pk-btn pk-btn--sm pk-btn--ghost" onClick={() => moveRule(i, 1)} aria-label="Descer">▼</button>
+                {r.when === 'species' && <button class="pk-btn pk-btn--sm pk-btn--ghost" onClick={() => setRules(rules.filter((_, j) => j !== i))}>Remover</button>}
               </div>
             </div>
           ))}
           <button
-            class="btn btn-sm"
+            class="pk-btn pk-btn--sm"
             onClick={() => setRules([...rules, { id: `r-${Date.now()}`, enabled: true, when: 'species', species: [], ball: 'poke-ball', fallback: true }])}
           >
             + Regra por espécie
@@ -93,7 +93,7 @@ export function AutoManagerScreen(_: ScreenProps) {
                 {['S', 'A', 'B', 'C', 'D'].map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </label>
-            <p class="small muted">Shinies, Pokémon protegidos 🔒 e cópias com IVs melhores nunca são transferidos automaticamente.</p>
+            <p class="small muted">Shinies, Pokémon protegidos e cópias com IVs melhores nunca são transferidos automaticamente.</p>
           </div>
         </Window>
         <Window title="Comprador automático">

@@ -11,9 +11,9 @@ export function StarterPicker() {
         {starters.map((k) => {
           const sp = speciesOf(app.data, k);
           return (
-            <button key={k} class="btn starter" onClick={() => app.dispatch({ type: 'ChooseStarter', species: k })}>
+            <button key={k} class="starter" onClick={() => app.dispatch({ type: 'ChooseStarter', species: k })}>
               <Sprite id={sp.id} animated size={96} />
-              <b>{sp.name}</b>
+              <span class="starter__name">{sp.name}</span>
               <span class="row">{sp.types.map((t) => <TypeBadge key={t} type={t} />)}</span>
             </button>
           );
@@ -44,13 +44,13 @@ export function OfflineModal() {
         Você ficou fora por <b>{duration(r.awayMs)}</b>. Com eficiência offline de {Math.round(r.efficiency * 100)}%, sua equipe explorou por{' '}
         <b>{duration(r.simulatedMs)}</b>{r.capped && <span class="bad"> (limite offline atingido — aumente na Pesquisa)</span>}.
       </p>
-      <div class="metrics">
-        <div class="metric"><div class="label">Batalhas</div><div class="value">{fmt(sm.battlesWon)}</div></div>
-        <div class="metric"><div class="label">Capturas</div><div class="value">{fmt(sm.captures)}</div></div>
-        <div class="metric"><div class="label">₽</div><div class="value">{fmt(sm.money)}</div></div>
-        <div class="metric"><div class="label">XP</div><div class="value">{fmt(sm.xp)}</div></div>
-        <div class="metric"><div class="label">Níveis</div><div class="value">{fmt(sm.levelUps)}</div></div>
-        <div class="metric"><div class="label">Derrotas</div><div class="value">{fmt(sm.battlesLost)}</div></div>
+      <div class="pk-metrics">
+        <div class="pk-metric"><div class="pk-metric__label">Batalhas</div><div class="pk-metric__value">{fmt(sm.battlesWon)}</div></div>
+        <div class="pk-metric"><div class="pk-metric__label">Capturas</div><div class="pk-metric__value">{fmt(sm.captures)}</div></div>
+        <div class="pk-metric"><div class="pk-metric__label">₽</div><div class="pk-metric__value">{fmt(sm.money)}</div></div>
+        <div class="pk-metric"><div class="pk-metric__label">XP</div><div class="pk-metric__value">{fmt(sm.xp)}</div></div>
+        <div class="pk-metric"><div class="pk-metric__label">Níveis</div><div class="pk-metric__value">{fmt(sm.levelUps)}</div></div>
+        <div class="pk-metric"><div class="pk-metric__label">Derrotas</div><div class="pk-metric__value">{fmt(sm.battlesLost)}</div></div>
       </div>
       {sm.newSpecies.length > 0 && (
         <>
@@ -62,14 +62,14 @@ export function OfflineModal() {
           </div>
         </>
       )}
-      {sm.shinies.length > 0 && <p class="great">✨ Shinies encontrados: {sm.shinies.map(name).join(', ')}</p>}
+      {sm.shinies.length > 0 && <p class="great">Shinies encontrados: {sm.shinies.map(name).join(', ')}</p>}
       {sm.evolutions.length > 0 && <p>Evoluções: {sm.evolutions.map((e) => `${name(e.from)} → ${name(e.to)}`).join(', ')}</p>}
-      {sm.badges.length > 0 && <p class="great">🏅 {sm.badges.join(', ')}</p>}
+      {sm.badges.length > 0 && <p class="great">Insígnias: {sm.badges.join(', ')}</p>}
       {Object.keys(sm.itemsFound).length > 0 && (
         <p class="small">Itens: {Object.entries(sm.itemsFound).map(([id, q]) => `${q}× ${app.data.items.get(id)?.name}`).join(', ')}</p>
       )}
       <p class="small muted">Bolas usadas: {sm.ballsUsed}</p>
-      <button class="btn btn-primary" onClick={close}>Continuar</button>
+      <button class="pk-btn pk-btn--primary" onClick={close}>Continuar</button>
     </Modal>
   );
 }

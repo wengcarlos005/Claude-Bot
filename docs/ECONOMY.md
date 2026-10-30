@@ -150,6 +150,7 @@ Cada linha é uma rodada do simulador → problema → mudança.
 | 16 | Revisão de código: obediência não limitava PS; treinadores ignoravam o Tier no 1º Pokémon | Corrigido (ver PROJECT_STATUS) |
 | 17 | 40 mil PP em 120 h com farm de Afinidade (+1 PP por duplicata) | Duplicatas comuns rendem só ₽; PP só para raros, lendários e shinies → ~500 PP em 120 h |
 | 18 | Metade dos shinies perdidos (34/71) após 3–6 arremessos | Shiny: até 30 tentativas → 35/37 e 33/40 |
+| 19 | Pedido de design: liberar rotas por Nível de Treinador em vez de vitórias | Faixas por região (Kanto 1–30, Johto 30–42, Hoenn 42–62, Sinnoh 62–85); XP de treinador por vitória, captura, espécie nova, insígnia e Campeão. Resultado: Kanto 7,5–9,4 h, Johto 13–14 h, Hoenn 19,8–23,5 h, 8 insígnias de Sinnoh 28,3 h (ver §8) |
 
 ## 7. Pontos em aberto
 - Validar Johto, Hoenn e Sinnoh com jogadores reais: o bot não troca a equipe por tipo contra cada ginásio, e um jogador
@@ -158,7 +159,22 @@ Cada linha é uma rodada do simulador → problema → mudança.
   decrescentes se a renda de PP ficar alta demais.
 - Considerar metas de calendário mais longas por região quando o ranking existir (temporadas).
 
-## 8. Última rodada (120 h simuladas, 2 sementes)
+## 8. Última rodada — Nível de Treinador (2 sementes)
+
+| Marco | Seed 1 | Seed 2 |
+|---|---|---|
+| 1ª insígnia (Brock) | 0,84 h | — |
+| Campeão de Kanto | 9,35 h | 7,51 h |
+| Campeão de Johto | 14,09 h | 13,02 h |
+| Campeão de Hoenn | 23,52 h | 19,77 h |
+| 8ª insígnia de Sinnoh | 28,26 h | — |
+
+**Leitura.** Liberar por Nível de Treinador deixa o meio do jogo mais rápido que a versão por vitórias (Hoenn caiu de
+29–41 h para 20–24 h), porque o jogador não precisa mais "limpar" cada rota. Kanto ficou praticamente igual. A parede
+continua sendo os tetos de nível e o Tier das Ligas, não as rotas. Próxima calibração, depois do playtest: se Hoenn e
+Sinnoh parecerem rápidos, subir as faixas (ex.: Hoenn 45–66, Sinnoh 66–90) ou o expoente da curva de XP de treinador.
+
+## 9. Rodada anterior — liberação por vitórias (120 h, 2 sementes)
 
 | Marco | Seed 1 | Seed 2 |
 |---|---|---|

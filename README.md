@@ -25,6 +25,8 @@ Abra o endereço que o Vite mostrar (normalmente http://localhost:5173).
 | `npm test` | Testes (Vitest) |
 | `npm run typecheck` | Só o TypeScript |
 | `npm run build:data` | Regenera `src/data/generated/` a partir dos CSVs da PokéAPI |
+| `npm run build:tokens` | Gera `src/ui/styles/tokens.css` a partir de `design/tokens.json` (tokens do Design System) |
+| `npm run e2e` | Teste de ponta a ponta no navegador (Playwright) |
 | `npm run sim -- 72 1` | Simulador de balanceamento: um bot joga 72 h (semente 1) e mostra o ritmo |
 | `npm run sprites:download` | Baixa os sprites para `public/assets/sprites` (opcional; ver abaixo) |
 
@@ -55,7 +57,8 @@ echo "VITE_SPRITE_BASE=/assets/sprites" > .env.local
 | [docs/GDD.md](docs/GDD.md) | Regras do jogo como implementadas (exploração, batalha, captura, evolução, regiões, economia, ferramentas) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Camadas, core determinístico, dados, persistência, backend futuro, modelo de banco, testes, escalabilidade |
 | [docs/ECONOMY.md](docs/ECONOMY.md) | Balanceamento e economia com os resultados do simulador |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Etapas, MVP, critérios de aceite e riscos |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Passo a passo das etapas com status, MVP e riscos |
+| [Design System](https://claude.ai/artifact/GDMyLsBF3LxAsWg9epbDKs) | Tokens, tipografia e componentes da interface (fonte dos tokens: `design/tokens.json`) |
 
 ## Aviso legal
 Pokémon e todos os nomes e imagens relacionados são marcas e propriedade da Nintendo, Game Freak, Creatures Inc. e

@@ -14,6 +14,8 @@ export function checkRequirement(state: GameState, req: Requirement): boolean {
   switch (req.type) {
     case 'areaCleared':
       return !!state.world.areas[req.areaId]?.cleared;
+    case 'trainerLevel':
+      return trainerLevel(state) >= req.min;
     case 'badge':
       return state.player.badges.includes(req.badgeId);
     case 'badgeCount':
@@ -97,6 +99,7 @@ export function checkAreaCleared(ctx: GameContext, state: GameState, area: Resol
   const before = new Set(unlockedAreaIds(state, ctx.data));
   p.cleared = true;
   state.player.researchPoints += 5;
+  state.player.trainerXp += 20;
   ctx.emit({ type: 'areaCleared', areaId: area.id });
   if (area.clearReward?.items) for (const [id, qty] of Object.entries(area.clearReward.items)) addItem(ctx, state, id, qty);
   if (area.clearReward?.money) state.player.money += area.clearReward.money;
@@ -125,4 +128,30 @@ export function timeOfDay(nowMs: number): 'morning' | 'day' | 'night' {
 
 export function isNight(nowMs: number): boolean {
   return timeOfDay(nowMs) === 'night';
+}
+
+// ---------------------------------------------------------------- Nível de Treinador
+
+export const TRAINER_MAX_LEVEL = 100;
+
+/** XP total para estar no Nível de Treinador `n` (curva quadrática: 10·(n−1)²). */
+export function trainerXpForLevel(n: number): number {
+  return 10 * (Math.max(1, n) - 1) ** 2;
+}
+
+export function trainerLevel(state: GameState): number {
+  return Math.min(TRAINER_MAX_LEVEL, 1 + Math.floor(Math.sqrt(state.player.trainerXp / 10)));
+}
+
+/** Concede XP de Treinador; anuncia subida de nível e as áreas que ela liberou. */
+export function giveTrainerXp(ctx: GameContext, state: GameState, amount: number): void {
+  if (amount <= 0) return;
+  const before = trainerLevel(state);
+  const unlockedBefore = new Set(unlockedAreaIds(state, ctx.data));
+  state.player.trainerXp += Math.round(amount);
+  const after = trainerLevel(state);
+  if (after > before) {
+    ctx.emit({ type: 'trainerLevelUp', level: after });
+    announceUnlocks(ctx, state, unlockedBefore);
+  }
 }

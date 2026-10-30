@@ -43,7 +43,7 @@ export function ResearchScreen(_: ScreenProps) {
                     {cost === null ? (
                       <span class="good small">Máximo</span>
                     ) : (
-                      <button class={`btn btn-sm ${u.currency === 'money' ? 'btn-primary' : 'btn-gold'}`} disabled={!afford || !reqOk} onClick={() => app.dispatch({ type: 'BuyUpgrade', upgradeId: u.id })}>
+                      <button class={`pk-btn pk-btn--sm ${u.currency === 'money' ? 'pk-btn--primary' : 'pk-btn--gold'}`} disabled={!afford || !reqOk} onClick={() => app.dispatch({ type: 'BuyUpgrade', upgradeId: u.id })}>
                         {u.currency === 'money' ? `₽${fmt(cost)}` : `${fmt(cost)} PP`}
                       </button>
                     )}
@@ -56,15 +56,15 @@ export function ResearchScreen(_: ScreenProps) {
       </Window>
       <div class="stack">
         <Window title="Bônus ativos">
-          <div class="metrics">
-            <div class="metric"><div class="label">XP</div><div class="value">×{b.xpMult.toFixed(2)}</div></div>
-            <div class="metric"><div class="label">₽</div><div class="value">×{b.moneyMult.toFixed(2)}</div></div>
-            <div class="metric"><div class="label">Captura</div><div class="value">+{Math.round(b.captureBonus * 100)}%</div></div>
-            <div class="metric"><div class="label">Atributos</div><div class="value">×{b.statMult.toFixed(2)}</div></div>
-            <div class="metric"><div class="label">Exp. Share</div><div class="value">{Math.round(b.expShare * 100)}%</div></div>
-            <div class="metric"><div class="label">Shiny</div><div class="value">1/{fmt(1 / b.shinyChance)}</div></div>
-            <div class="metric"><div class="label">Encontro</div><div class="value">{(b.walkMs / 1000).toFixed(1)}s</div></div>
-            <div class="metric"><div class="label">Offline</div><div class="value">{Math.round(b.offlineCapMs / 3600_000)}h · {Math.round(b.offlineEfficiency * 100)}%</div></div>
+          <div class="pk-metrics">
+            <div class="pk-metric"><div class="pk-metric__label">XP</div><div class="pk-metric__value">×{b.xpMult.toFixed(2)}</div></div>
+            <div class="pk-metric"><div class="pk-metric__label">₽</div><div class="pk-metric__value">×{b.moneyMult.toFixed(2)}</div></div>
+            <div class="pk-metric"><div class="pk-metric__label">Captura</div><div class="pk-metric__value">+{Math.round(b.captureBonus * 100)}%</div></div>
+            <div class="pk-metric"><div class="pk-metric__label">Atributos</div><div class="pk-metric__value">×{b.statMult.toFixed(2)}</div></div>
+            <div class="pk-metric"><div class="pk-metric__label">Exp. Share</div><div class="pk-metric__value">{Math.round(b.expShare * 100)}%</div></div>
+            <div class="pk-metric"><div class="pk-metric__label">Shiny</div><div class="pk-metric__value">1/{fmt(1 / b.shinyChance)}</div></div>
+            <div class="pk-metric"><div class="pk-metric__label">Encontro</div><div class="pk-metric__value">{(b.walkMs / 1000).toFixed(1)}s</div></div>
+            <div class="pk-metric"><div class="pk-metric__label">Offline</div><div class="pk-metric__value">{Math.round(b.offlineCapMs / 3600_000)}h · {Math.round(b.offlineEfficiency * 100)}%</div></div>
           </div>
         </Window>
         <Window title={<>Pesquisa do Professor <span class="muted small">({caught} espécies)</span></>}>
@@ -74,7 +74,7 @@ export function ResearchScreen(_: ScreenProps) {
                 const done = s.milestonesClaimed.includes(m.id);
                 return (
                   <tr key={m.id} class={done ? '' : caught >= m.caught ? 'current' : 'locked'}>
-                    <td class="num">{done ? '✅' : '◻'} {m.caught}</td>
+                    <td class="num">{done ? '◓' : '·'} {m.caught}</td>
                     <td class="small">{m.rewards.map(rewardText).join(' · ')}</td>
                   </tr>
                 );
