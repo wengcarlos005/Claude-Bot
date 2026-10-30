@@ -9,6 +9,7 @@ import { masteryLevel, maxHpOf, partyMembers, speciesOf } from '../pokemon';
 import type { GameState, OwnedPokemon } from '../state/types';
 import { levelCap } from '../world';
 import { tryLevelEvolution } from './evolution';
+import { moveSlots, refreshMoves } from '../moves';
 
 /** Concede XP a um Pokémon, respeitando o teto de nível. Retorna a XP efetivamente ganha. */
 export function giveExp(ctx: GameContext, state: GameState, pk: OwnedPokemon, amount: number): number {
@@ -17,6 +18,7 @@ export function giveExp(ctx: GameContext, state: GameState, pk: OwnedPokemon, am
   if (pk.level >= cap) return 0;
   const maxXp = expForLevel(sp.growthRate, cap);
   const before = pk.xp;
+  const startLevel = pk.level;
   pk.xp = Math.min(maxXp, pk.xp + Math.floor(amount));
   while (pk.level < cap && pk.xp >= expForLevel(sp.growthRate, pk.level + 1)) {
     const oldMax = maxHpOf(state, ctx.data, pk);
@@ -26,6 +28,12 @@ export function giveExp(ctx: GameContext, state: GameState, pk: OwnedPokemon, am
     pk.friendship = Math.min(255, pk.friendship + 2);
     ctx.emit({ type: 'levelUp', uid: pk.uid, species: pk.species, level: pk.level });
     tryLevelEvolution(ctx, state, pk);
+  }
+  if (pk.level !== startLevel) {
+    refreshMoves(ctx, pk);
+    if (moveSlots(pk.level) > moveSlots(startLevel)) {
+      ctx.emit({ type: 'message', text: `${speciesOf(ctx.data, pk.species).name} agora pode usar ${moveSlots(pk.level)} golpes em batalha!` });
+    }
   }
   return pk.xp - before;
 }

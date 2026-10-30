@@ -5,6 +5,14 @@ import type { RngState } from '../engine/rng';
 export const SAVE_VERSION = 3;
 export const MAX_PARTY = 6;
 
+/** Golpes do Pokémon: conhecidos (até 10) e equipados (vagas por nível: 2, 4 ou 6). */
+export interface MoveSet {
+  known: string[];
+  active: string[];
+  /** Automático: o jogo equipa os melhores golpes sempre que aprende um novo ou abre uma vaga. */
+  auto: boolean;
+}
+
 export interface OwnedPokemon {
   uid: string;
   species: string;
@@ -31,6 +39,8 @@ export interface OwnedPokemon {
   locked: boolean;
   /** Vitórias como Pokémon ativo (estatística individual). */
   wins: number;
+  /** Golpes (saves antigos não têm: o conjunto inicial é derivado do learnset na primeira vez). */
+  moves?: MoveSet;
 }
 
 export interface Combatant {

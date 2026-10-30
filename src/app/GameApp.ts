@@ -77,6 +77,8 @@ export class GameApp {
   readonly lastHit = signal<{ side: 'player' | 'foe'; at: number; crit: boolean; eff: number } | null>(null);
   readonly fx = signal<Fx[]>([]);
   readonly captures = signal<RecentCapture[]>([]);
+  /** Evoluções a mostrar na animação (só as que acontecem com o jogo aberto; offline vão só para o registro). */
+  readonly evolutions = signal<{ id: number; uid: string; from: string; to: string; shiny: boolean }[]>([]);
   core: GameCore;
   private seq = 0;
   private acc = 0;
@@ -281,6 +283,9 @@ export class GameApp {
         if (e.xp > 0) this.pushFx({ kind: 'xp', side: 'player', text: `+${Math.round(e.xp)} XP` });
       } else if (e.type === 'levelUp' && this.state.party[0] === e.uid) this.pushFx({ kind: 'levelUp', side: 'player', text: `Nv ${e.level}` });
       else if (e.type === 'healed' && e.reason !== 'center') this.pushFx({ kind: 'heal', side: 'player', text: e.reason === 'revive' ? 'Revive' : 'Poção' });
+      else if (e.type === 'evolved') {
+        this.evolutions.value = [...this.evolutions.value, { id: ++this.seq, uid: e.uid, from: e.from, to: e.to, shiny: this.state.pokemon[e.uid]?.shiny ?? false }].slice(-5);
+      }
     }
     const d = describeEvent(this.data, this.state, e);
     if (!d) return;

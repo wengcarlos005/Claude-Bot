@@ -41,6 +41,8 @@ export function describeEvent(data: GameData, state: GameState, e: GameEvent): D
       return { text: `${sp(e.species)} fugiu!`, tone: 'bad', toast: true };
     case 'levelUp':
       return { text: `${sp(e.species)} subiu para o nível ${e.level}!`, tone: 'good' };
+    case 'moveLearned':
+      return { text: `${sp(e.species)} aprendeu ${data.moves.get(e.moveId)?.name ?? e.moveId}!`, tone: 'good' };
     case 'evolved':
       return { text: `${sp(e.from)} evoluiu para ${sp(e.to)}!`, tone: 'great', toast: true };
     case 'itemFound':

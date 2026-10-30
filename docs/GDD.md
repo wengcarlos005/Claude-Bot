@@ -99,8 +99,12 @@ flowchart LR
   (−10% por nível de "Velocidade de Batalha").
 - **IA de golpe:** escolhe o maior dano esperado, considerando poder × STAB × efetividade × precisão × razão de
   atributos.
-  - **Golpes conhecidos:** os 4 de dano mais fortes aprendidos até o nível atual (learnset do jogo mais recente da
-    espécie).
+  - **Golpes do jogador:** o Pokémon aprende os golpes de dano do learnset ao subir de nível ou evoluir e conhece
+    no máximo **10**. Em batalha usa só os **equipados**: 2 vagas (Nv 1–19), 4 (Nv 20–39) e 6 (Nv 40+). Com 10
+    conhecidos, um golpe novo só entra no lugar do mais fraco que não está equipado.
+  - **Troca de golpes:** no modo automático o jogo equipa os mais fortes; o treinador pode escolher os golpes a
+    qualquer momento na tela do Pokémon (o automático desliga e as vagas novas são preenchidas sem desfazer a escolha).
+  - **Selvagens e treinadores:** os golpes de dano mais fortes até o nível, no número de vagas do nível.
   - **Golpes de dois turnos** (Hyper Beam, Solar Beam…) contam metade do poder.
   - **Golpes excluídos:** os que se autodestroem ou que dependem de condições fora do sistema (Explosion, Dream Eater,
     Focus Punch…).

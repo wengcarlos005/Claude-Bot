@@ -50,6 +50,16 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
   vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
 - XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
 
+### Golpes, hunt que varre o mapa e polimento (30/10)
+- **Golpes:** até 10 conhecidos (golpes de dano do learnset, aprendidos ao subir de nível ou evoluir); 2 equipados
+  no Nv 1–19, 4 no Nv 20–39 e 6 no Nv 40+. Painel no detalhe do Pokémon para equipar/tirar, modo automático e
+  próximos golpes; registro avisa golpe aprendido e vaga nova. Simulação (seed 1): Brock 0,84 h, Campeão de Kanto 8,8 h.
+- **Hunt:** selvagens nascem em pontos aleatórios do mapa inteiro (só na parte alcançável), população de 5 a 14
+  conforme o tamanho do mato; o líder escolhe alvos nos setores visitados há mais tempo e varre a rota toda.
+- **Polimento (1.18):** Mochila com bolsos (inclui Fragmentos) e cartões com ícones grandes; Loja em cartões com preço
+  pela quantidade; contagem de "itens que chegam com insígnias" corrigida; animação de evolução (silhueta piscando,
+  clarão e revelação).
+
 ### Visual de GBA, mapa em trilha e Hub sem sobreposição (30/10)
 - **Pele de GBA:** painéis, menus, botões e placas com molduras de pixel (9 fatias, 2×) no lugar do "vidro"; fonte pixel
   nos rótulos; tema Dia e Noite.
@@ -130,7 +140,7 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
 ## 🔶 Em andamento
 - **Mercado de jogadores (etapa 1.16):** a Oficina já fabrica; falta a compra e venda entre jogadores (precisa do
   backend).
-- **Polimento das telas secundárias (etapa 1.17).**
+- **Golpes de status** (Growl, Sleep Powder…) ainda não entram: a batalha só usa golpes de dano (Fase 4: status).
 - **Balanceamento com Nível de Treinador:** Hoenn ficou mais rápido (20–24 h; antes 29–41 h). Confirmar no playtest se
   as faixas de Hoenn/Sinnoh devem subir (ver `docs/ECONOMY.md` §8).
 
@@ -152,5 +162,5 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
 - O progresso offline usa o horário do momento do retorno para regras de dia/noite.
 
 ## ▶️ Próxima tarefa sugerida
-Polimento das telas secundárias (1.17) e playtest. Mercado de jogadores junto com o backend. Depois, decidir entre Postgres+Fastify e Firebase para o backend
+Playtest (1.19): primeira hora, golpes e troca de região. Mercado de jogadores junto com o backend. Depois, decidir entre Postgres+Fastify e Firebase para o backend
 (recomendação em docs/ARCHITECTURE.md §8) e iniciar a Fase 2.

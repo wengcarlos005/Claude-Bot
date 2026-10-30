@@ -11,6 +11,7 @@ export type GameEvent =
   | { type: 'captured'; uid: string; species: string; shiny: boolean; newSpecies: boolean; transferred: boolean }
   | { type: 'fled'; species: string }
   | { type: 'levelUp'; uid: string; species: string; level: number }
+  | { type: 'moveLearned'; uid: string; species: string; moveId: string }
   | { type: 'evolved'; uid: string; from: string; to: string }
   | { type: 'itemUsed'; itemId: string; uid?: string }
   | { type: 'itemFound'; itemId: string; qty: number }

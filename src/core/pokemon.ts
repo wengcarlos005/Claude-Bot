@@ -5,7 +5,7 @@ import { STAT_KEYS } from '../data/types';
 import { AFFINITY_STAT_BONUS, AFFINITY_THRESHOLDS, MASTERY_STAT_BONUS, MASTERY_THRESHOLDS } from '../data/content/upgrades';
 import type { GameContext } from './context';
 import { computeBonuses } from './bonuses';
-import { effectivePower } from './formulas/damage';
+import { activeMoves, bestMoves, initialMoveSet } from './moves';
 import { expForLevel } from './formulas/experience';
 import { NATURES } from './formulas/natures';
 import { calcStats, emptyStats } from './formulas/stats';
@@ -16,26 +16,6 @@ export function speciesOf(data: GameData, key: string): Species {
   const s = data.species.get(key);
   if (!s) throw new Error(`Espécie desconhecida: ${key}`);
   return s;
-}
-
-/** Os 4 golpes de dano mais fortes aprendidos até o nível (STAB pesa 1,5×). Sem golpe de dano → Struggle. */
-export function movesFor(data: GameData, speciesKey: string, level: number): string[] {
-  const sp = speciesOf(data, speciesKey);
-  const seen = new Set<string>();
-  const scored: { id: string; score: number }[] = [];
-  for (const [lvl, id] of sp.learnset) {
-    if (lvl > level || seen.has(id)) continue;
-    seen.add(id);
-    const m = data.moves.get(id);
-    if (!m) continue;
-    const p = effectivePower(m);
-    if (p <= 0) continue;
-    const acc = (m.accuracy ?? 100) / 100;
-    scored.push({ id, score: p * acc * (sp.types.includes(m.type) ? 1.5 : 1) });
-  }
-  scored.sort((a, b) => b.score - a.score);
-  const moves = scored.slice(0, 4).map((x) => x.id);
-  return moves.length ? moves : ['struggle'];
 }
 
 /** Golpes aprendidos até o nível (inclusive de status) — usado nas condições de evolução. */
@@ -88,7 +68,7 @@ export function toCombatant(state: GameState, data: GameData, pk: OwnedPokemon, 
   const stats = level === pk.level ? full : calcStats(sp.baseStats, pk.ivs, pk.evs, level, pk.nature, statBonusMult(state, data, pk, globalStatMult));
   const hpScale = full.hp / stats.hp;
   return {
-    uid: pk.uid, species: pk.species, level, stats, types: sp.types, moves: movesFor(data, pk.species, level),
+    uid: pk.uid, species: pk.species, level, stats, types: sp.types, moves: activeMoves(data, pk, level),
     hp: Math.min(pk.hp, full.hp) / hpScale, maxHp: stats.hp, shiny: pk.shiny, heldItem: pk.heldItem, hpScale,
   };
 }
@@ -105,7 +85,7 @@ export function wildCombatant(ctx: GameContext, speciesKey: string, level: numbe
   const ivs = randomIvs(ctx);
   const stats = calcStats(sp.baseStats, ivs, emptyStats(), level, 'hardy', statMult);
   return {
-    species: speciesKey, level, stats, types: sp.types, moves: movesFor(ctx.data, speciesKey, level),
+    species: speciesKey, level, stats, types: sp.types, moves: bestMoves(ctx.data, speciesKey, level),
     hp: stats.hp, maxHp: stats.hp, shiny, heldItem: null, ivs,
   };
 }
@@ -142,6 +122,7 @@ export function createPokemon(ctx: GameContext, state: GameState, speciesKey: st
     origin: o.origin,
     locked: o.shiny ?? false,
     wins: 0,
+    moves: initialMoveSet(ctx.data, speciesKey, level),
   };
   pk.hp = maxHpOf(state, ctx.data, pk);
   return pk;

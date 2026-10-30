@@ -285,3 +285,56 @@ describe('encontro planejado', () => {
     expect(state.hunt.trainerXp).toBeGreaterThan(0);
   });
 });
+
+describe('golpes: aprender, vagas por nível e troca', () => {
+  it('vagas crescem 2 → 4 → 6 e o Pokémon conhece no máximo 10 golpes', async () => {
+    const { moveSlots, MAX_KNOWN_MOVES, initialMoveSet } = await import('../src/core/moves');
+    const { data: d } = await newCore();
+    expect([moveSlots(5), moveSlots(19), moveSlots(20), moveSlots(39), moveSlots(40), moveSlots(100)]).toEqual([2, 2, 4, 4, 6, 6]);
+    const set = initialMoveSet(d, 'charizard', 100);
+    expect(set.known.length).toBeLessThanOrEqual(MAX_KNOWN_MOVES);
+    expect(set.active.length).toBe(6);
+    expect(set.active.every((m) => set.known.includes(m))).toBe(true);
+  });
+
+  it('subir de nível ensina golpes novos e abre vagas; a escolha manual é respeitada', async () => {
+    const { giveExp } = await import('../src/core/systems/progression');
+    const { expForLevel } = await import('../src/core/formulas/experience');
+    const { core, state, data: d } = await newCore();
+    core.dispatch({ type: 'ChooseStarter', species: 'squirtle' });
+    state.player.badges = ['boulder', 'cascade', 'thunder', 'rainbow', 'soul', 'marsh', 'volcano', 'earth'];
+    state.settings.autoEvolve = false;
+    const pk = state.pokemon[state.party[0]];
+    expect(pk.moves!.active.length).toBeLessThanOrEqual(2);
+    giveExp(core.ctx, state, pk, expForLevel(d.species.get('squirtle')!.growthRate, 25) - pk.xp);
+    expect(pk.level).toBe(25);
+    expect(pk.moves!.known.length).toBeGreaterThan(2);
+    expect(pk.moves!.active.length).toBe(4);
+
+    // Troca manual: só golpes conhecidos, no máximo as vagas do nível; o modo automático desliga.
+    const [a, b] = pk.moves!.known.slice(-2);
+    expect(core.dispatch({ type: 'SetMoves', uid: pk.uid, active: [a, b], auto: false }).ok).toBe(true);
+    expect(pk.moves!.active).toEqual([a, b]);
+    expect(pk.moves!.auto).toBe(false);
+    expect(core.dispatch({ type: 'SetMoves', uid: pk.uid, active: ['hyper-beam'], auto: false }).ok).toBe(false);
+    expect(core.dispatch({ type: 'SetMoves', uid: pk.uid, active: pk.moves!.known.slice(0, 5), auto: false }).ok).toBe(false);
+    expect(core.dispatch({ type: 'SetMoves', uid: pk.uid, active: [], auto: false }).ok).toBe(false);
+
+    // Ao subir mais, a vaga nova é preenchida sem desfazer a escolha.
+    giveExp(core.ctx, state, pk, expForLevel(d.species.get('squirtle')!.growthRate, 26) - pk.xp);
+    expect(pk.moves!.active.slice(0, 2)).toEqual([a, b]);
+    expect(pk.moves!.active.length).toBe(4);
+    expect(core.dispatch({ type: 'SetMoves', uid: pk.uid, active: [], auto: true }).ok).toBe(true);
+    expect(pk.moves!.auto).toBe(true);
+  });
+
+  it('a batalha usa só os golpes equipados', async () => {
+    const { toCombatant } = await import('../src/core/pokemon');
+    const { core, state, data: d } = await newCore();
+    core.dispatch({ type: 'ChooseStarter', species: 'bulbasaur' });
+    const pk = state.pokemon[state.party[0]];
+    pk.level = 30;
+    pk.moves = { known: ['tackle', 'vine-whip', 'razor-leaf'], active: ['tackle'], auto: false };
+    expect(toCombatant(state, d, pk).moves).toEqual(['tackle']);
+  });
+});
