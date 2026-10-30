@@ -7,6 +7,7 @@ import './ui/styles/app.css';
 import './ui/styles/hub.css';
 import './ui/styles/field.css';
 import './ui/styles/town.css';
+import './ui/styles/map.css';
 
 const root = document.getElementById('root')!;
 render(<div class="loading">Carregando Pokémon Idle…</div>, root);

@@ -12,7 +12,7 @@ body {
   grid-template-columns: 148px minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   grid-template-areas: 'top top' 'nav main';
-  padding: var(--space-3) var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-3) var(--space-5); overflow-x: clip;
 }
 
 /* ---------- Barra superior ---------- */
@@ -189,7 +189,7 @@ body {
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'top' 'main' 'nav'; padding-bottom: 84px; }
   .sidenav {
-    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 40; flex-direction: row; overflow-x: auto; border-radius: 0; border-width: 2px 0 0;
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 5000; flex-direction: row; overflow-x: auto; border-radius: 0; border-width: 2px 0 0;
     padding: 6px max(6px, env(safe-area-inset-left, 0px)) max(6px, env(safe-area-inset-bottom, 0px)); scrollbar-width: none;
   }
   .sidenav::-webkit-scrollbar { display: none; }
@@ -278,3 +278,13 @@ body {
   .route__side { grid-area: side; }
   .route__mons { grid-area: mons; }
 }
+@media (max-width: 900px) {
+  .app-toasts { bottom: 92px; z-index: 5100; }
+}
+
+/* Avatares (Ajustes) */
+.avatars { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: var(--space-3); }
+.avatar-opt { display: grid; place-items: center; padding: 2px; cursor: pointer; border-radius: var(--radius-md); background: var(--screen-raised); border: 2px solid var(--bezel); overflow: hidden; }
+.avatar-opt img { image-rendering: pixelated; }
+.avatar-opt:hover { border-color: var(--bezel-strong); }
+.avatar-opt[aria-checked='true'] { border-color: var(--lens); background: var(--lens-soft); }

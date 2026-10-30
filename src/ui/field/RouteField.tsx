@@ -61,7 +61,8 @@ export function RouteField({ hud = true }: { hud?: boolean }) {
   const ref = useRef<Model | null>(null);
   const box = useRef<HTMLDivElement>(null);
   // Distância entre o jogador e o oponente na batalha: ~170 px, em % da largura da cena.
-  const gap = Math.max(10, (170 / Math.max(240, box.current?.clientWidth ?? 1100)) * 100);
+  const width = Math.max(240, box.current?.clientWidth ?? 1100);
+  const gap = Math.max(10, ((width < 700 ? 115 : 170) / width) * 100);
   const hourKey = new Date().getHours();
   const table = useMemo(
     () => encounterTable(s, area, Date.now()).filter((x) => x.slot.method === 'walk' || x.slot.method === 'surf'),
@@ -97,7 +98,7 @@ export function RouteField({ hud = true }: { hud?: boolean }) {
       from: { ...start }, to: { ...start }, walkTotal: 1, plan: null, target: null, inBattle: false,
     };
     if (!area.gym && !area.league) {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < (width < 700 ? 3 : 5); i++) {
         const sl = pickSlot();
         if (sl) spawn(m, sl.species, sl.level, start).born = now - 1000;
       }

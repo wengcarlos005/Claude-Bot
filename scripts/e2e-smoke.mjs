@@ -31,14 +31,17 @@ try {
   await page.waitForFunction(() => window.pokemonIdle.state.stats.battlesWon + window.pokemonIdle.state.stats.captures > 0, null, { timeout: 20000 });
   const s1 = await page.evaluate(() => ({ won: window.pokemonIdle.state.stats.battlesWon, party: window.pokemonIdle.state.party.length }));
   if (shots) await page.screenshot({ path: `${shots}/explore.png` });
-  for (const label of ['Mapa', 'Equipe', 'PC', 'Pokédex', 'Mochila', 'Loja', 'Pesquisa', 'Automações', 'Análises', 'Ajustes']) {
-    await page.click(`.tool:has-text("${label}")`);
+  for (const label of ['Hunt', 'Mapas', 'Equipe', 'PC', 'Pokédex', 'Inventário', 'Loja', 'Pesquisa', 'Automações', 'Estatísticas', 'Hub']) {
+    await page.click(`.sidenav__item:has-text("${label}")`);
     await page.waitForTimeout(300);
     if (shots) await page.screenshot({ path: `${shots}/${label}.png` });
   }
-  await page.click('.tool:has-text("Mapa")');
-  await page.click('button:has-text("Analisar") >> nth=0');
-  await page.waitForSelector('.route__est', { timeout: 10000 });
+  await page.click('.sidenav__item:has-text("Mapas")');
+  await page.click('.place__tabs button:has-text("Detalhes")');
+  await page.click('button:has-text("Analisar hunt")');
+  await page.waitForSelector('text=XP/h ·', { timeout: 10000 });
+  await page.click('button:has-text("Ver lista e filtros")');
+  await page.waitForSelector('.chapter', { timeout: 5000 });
   await page.evaluate(() => window.pokemonIdle.save());
   await page.reload();
   await page.waitForFunction(() => window.pokemonIdle?.state.player.starterChosen === true, null, { timeout: 15000 });
@@ -51,7 +54,7 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/offline.png` });
   await page.click('button:has-text("Continuar")');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.click('.tool:has-text("Hunt")');
+  await page.click('.sidenav__item:has-text("Hunt")');
   await page.waitForTimeout(500);
   if (shots) await page.screenshot({ path: `${shots}/mobile.png` });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);

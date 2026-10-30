@@ -13,7 +13,7 @@
 .field__decor { position: absolute; transform: translate(-50%, -100%); background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }
 
 /* Entidades (Pokémon): ancoradas pelos pés, com escala por profundidade. */
-.fe { position: absolute; transform: translate(-50%, -100%) scale(var(--s, 1)); transform-origin: 50% 100%; transition: left 0.12s linear, top 0.12s linear; display: grid; justify-items: center; }
+.fe { position: absolute; transform: translate(-50%, -100%) scale(calc(var(--s, 1) * var(--zoom, 1))); transform-origin: 50% 100%; transition: left 0.12s linear, top 0.12s linear; display: grid; justify-items: center; }
 .fe.is-wander { transition: left 1.7s ease-in-out, top 1.7s ease-in-out; }
 .fe__body { position: relative; z-index: 1; }
 .fe__anim .pk-sprite { display: block; image-rendering: pixelated; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.25)); }
@@ -93,8 +93,7 @@
 }
 
 @media (max-width: 760px) {
-  .field { height: 260px; }
-  .fe { --s: 0.85; }
+  .field { --zoom: 0.62; }
   .fe__hud { min-width: 96px; }
 }
 
@@ -248,8 +247,9 @@
 }
 @media (max-width: 900px) {
   .huntview { height: auto; min-height: 0; overflow: visible; border: 0; box-shadow: none; display: flex; flex-direction: column; gap: 10px; }
-  .huntview .field { position: relative; inset: auto; height: 62vh; min-height: 360px; border-radius: var(--radius-lg); border: 2px solid var(--bezel); }
-  .hv, .hv-right { position: static; transform: none; width: auto; max-width: none; }
+  .huntview .field { position: relative; inset: auto; height: 400px; min-height: 0; border-radius: var(--radius-lg); border: 2px solid var(--bezel); --zoom: 0.62; }
+  .fe__hud.is-mini { display: none; }
+  .hv, .hv-right { position: static; transform: none; width: auto; max-width: none; z-index: auto; }
   .hv-right { display: flex; }
   .hv--stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hv--items { display: flex; justify-content: center; border-radius: var(--radius-lg); }

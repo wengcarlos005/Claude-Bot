@@ -50,6 +50,20 @@ _Última atualização: 30/10/2026. Passo a passo das etapas em [docs/ROADMAP.md
   vitórias. Insígnias e itens-chave continuam como requisitos extras. Concluir a área virou objetivo opcional.
 - XP de treinador por vitória, captura, espécie nova, treinador, insígnia e Campeão; save v3 com migração v2→v3.
 
+### Direção de arte "jogo" (30/10, a partir das imagens de referência)
+- **Tema Noite azul-marinho**, barra superior com avatar do treinador (sprites de treinador, escolhidos em Ajustes),
+  nível e XP, carteira (₽, PP, Pokédex) e menu lateral com ícones (sprites de itens + ícones pixel próprios).
+- **Hub = cidade em pixel art** gerada em código: Ginásio (leva ao próximo desafio), Centro Pokémon, Loja,
+  Laboratório (Pesquisa), Áreas de Caça (Mapa); Mercado Global, Guilda e Arena PvP aparecem como "Em breve". A equipe
+  passeia pela praça e a estátua da fonte é o Pokémon líder. Painéis: hunt ativa, equipe atual e próximo desafio.
+- **Mapa ilustrado:** ilha gerada a partir das áreas da região (montanhas perto de cavernas, árvores perto de
+  florestas, lagos, telhados nas cidades), trilha pontilhada com pinos (aqui, liberado, bloqueado, concluído), andares
+  agrupados numa localidade, painel com Pokémon comuns e raros, time e "Iniciar hunt", barra de progresso com
+  insígnias e modo lista com filtros.
+- **Hunt em tela cheia vista de cima:** clareira no meio do bioma, trilha, lago e vegetação densa; nome, nível e PS em
+  todos os selvagens; mira no alvo; nome do golpe e projétil na cor do tipo; painéis flutuantes recolhíveis (área,
+  métricas, itens rápidos, Pokémon na área, capturas, registro, equipe, controles da hunt).
+
 ### Hub, batalha na rota e mapa (30/10)
 - **Hub** no estilo painel de controle: colunas fixas com cartão do treinador, Pokémon em campo (tipos, nota de IV, PS, XP) e
   equipe (clique para pôr em campo); automações rápidas (regras de captura, poções com limite, Revive, recuo,

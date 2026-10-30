@@ -1,5 +1,5 @@
 // Hub: a cidade do jogador. Cada prédio leva a uma parte do jogo; o que ainda não existe aparece como "Em breve".
-import { useMemo, useRef } from 'preact/hooks';
+import { useEffect, useMemo, useRef } from 'preact/hooks';
 import type { ScreenProps } from '../App';
 import { CroppedSprite, Sprite, duration, fmt, useApp } from '../components';
 import { badgeSprite, trainerSprite } from '../../app/assets';
@@ -57,6 +57,12 @@ export function HubScreen({ go }: ScreenProps) {
     const b = Object.fromEntries(BUILDINGS.map((x) => [x.id, x.art()]));
     return { b, ground: townGround(BUILDINGS.map((x) => ({ x: x.x, y: x.y })), PLAZA), fountain: fountain(), lamp: lamp(), trees: [tree(0), tree(1), tree(2)] };
   }, []);
+  const wrap = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Em telas estreitas a cidade rola na horizontal: começa centralizada na praça.
+    const w = wrap.current;
+    if (w) w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
+  }, []);
   const lead = activeMember(s) ?? (s.party[0] ? s.pokemon[s.party[0]] : null);
   const nextChallenge = findNextChallenge(app.data.regions.flatMap((r) => r.areas.map((a) => app.data.areas.get(a.id)!)), s.player.badges, s.player.champions);
 
@@ -87,7 +93,7 @@ export function HubScreen({ go }: ScreenProps) {
 
   return (
     <div class="hub">
-      <div class="town-wrap">
+      <div class="town-wrap" ref={wrap}>
         <div class="town" style={{ backgroundImage: `url("${arts.ground}")` }}>
           {TREES.map(([x, y], i) => {
             const t = arts.trees[i % 3];
