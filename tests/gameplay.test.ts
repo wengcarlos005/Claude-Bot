@@ -233,3 +233,22 @@ describe('Nível de Treinador', () => {
     expect(core.dispatch({ type: 'SelectArea', areaId: 'kanto-route-22' }).ok).toBe(true);
   });
 });
+
+describe('encontro planejado', () => {
+  it('o alvo mostrado durante a caminhada é o Pokémon da batalha', async () => {
+    const { core, state } = await newCore(7);
+    core.dispatch({ type: 'ChooseStarter', species: 'charmander' });
+    let checked = 0;
+    for (let i = 0; i < 3000 && checked < 15; i++) {
+      const plan = state.exploration.phase === 'walking' ? state.exploration.next : undefined;
+      core.tick(100);
+      if (plan && state.exploration.phase === 'battle' && state.exploration.battle?.turn === 0) {
+        expect(state.exploration.battle.foe.species).toBe(plan.species);
+        if (plan.kind === 'wild') expect(state.exploration.battle.foe.level).toBe(plan.level);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(5);
+    expect(state.hunt.trainerXp).toBeGreaterThan(0);
+  });
+});

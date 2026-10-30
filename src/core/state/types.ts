@@ -69,6 +69,11 @@ export interface BattleState {
   encounterMethod: string;
 }
 
+export type EncounterPlan =
+  | { kind: 'wild'; areaId: string; species: string; level: number; legendary: boolean; method: string }
+  | { kind: 'trainer'; areaId: string; trainerId: string; species: string; level: number; trainerName: string }
+  | { kind: 'challenge'; areaId: string; trainerId: string; species: string; level: number; trainerName: string };
+
 export type ExplorationPhase = 'idle' | 'walking' | 'battle' | 'healing';
 
 export interface CaptureRule {
@@ -122,6 +127,10 @@ export interface HuntSession {
   captures: number;
   ballsUsed: number;
   shinies: number;
+  /** XP de Treinador ganho na hunt (opcional: saves antigos não têm). */
+  trainerXp?: number;
+  /** Valor (₽) dos consumíveis gastos na hunt: bolas arremessadas, poções e Revives. */
+  spent?: number;
 }
 
 export interface Boost {
@@ -196,6 +205,8 @@ export interface GameState {
     lossStreak: number;
     /** Sequência de ginásio/liga: índice do próximo treinador. */
     sequenceIndex: number;
+    /** Próximo encontro, sorteado no início da caminhada (a UI mostra o alvo enquanto o Pokémon anda até ele). */
+    next?: EncounterPlan | null;
   };
   captureRules: CaptureRule[];
   settings: Settings;

@@ -149,6 +149,7 @@ export function giveTrainerXp(ctx: GameContext, state: GameState, amount: number
   const before = trainerLevel(state);
   const unlockedBefore = new Set(unlockedAreaIds(state, ctx.data));
   state.player.trainerXp += Math.round(amount);
+  state.hunt.trainerXp = (state.hunt.trainerXp ?? 0) + Math.round(amount);
   const after = trainerLevel(state);
   if (after > before) {
     ctx.emit({ type: 'trainerLevelUp', level: after });

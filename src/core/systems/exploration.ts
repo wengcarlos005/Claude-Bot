@@ -8,7 +8,7 @@ import type { GameContext } from '../context';
 import { captureChance } from '../formulas/capture';
 import { ivTotal } from '../formulas/stats';
 import { activeMember, addPokemon, createPokemon, hasRoom, maxHpOf, partyMembers, speciesOf, toCombatant, wildCombatant } from '../pokemon';
-import type { BattleKind, BattleState, CaptureRule, Combatant, GameState } from '../state/types';
+import type { BattleKind, BattleState, CaptureRule, Combatant, EncounterPlan, GameState } from '../state/types';
 import { addItem, announceUnlocks, areaProgress, areaUnlocked, checkAreaCleared, giveTrainerXp, isFarmArea, levelCap, timeOfDay, unlockedAreaIds } from '../world';
 import { attack, roundOrder } from './battle';
 import { bestIvTotal, gainAffinity, registerCaught, registerSeen, shouldAutoTransfer, transferPokemon } from './collection';
@@ -41,6 +41,7 @@ export function tickExploration(ctx: GameContext, state: GameState, dt: number):
       ex.timer = bonuses.walkMs;
       break;
     case 'walking':
+      if (ex.next === undefined || (ex.next !== null && ex.next.areaId !== area.id)) ex.next = planEncounter(ctx, state, area);
       if (isFarmArea(area)) regenerate(ctx, state, bonuses, dt);
       ex.timer -= dt;
       if (ex.timer <= 0) {
@@ -126,31 +127,56 @@ function startNextEncounter(ctx: GameContext, state: GameState, area: ResolvedAr
     return;
   }
   const region = ctx.data.regionById.get(area.regionId)!;
+  const plan = ex.next && ex.next.areaId === area.id ? ex.next : planEncounter(ctx, state, area);
+  ex.next = undefined;
   if (area.gym || area.league) {
-    const seq = sequenceOf(area);
-    const tr = seq[ex.sequenceIndex];
+    const tr = sequenceOf(area)[ex.sequenceIndex];
     if (!tr) return finishSequence(ctx, state, area);
     startTrainerBattle(ctx, state, tr, area.league ? 'league' : 'gym', region.levelOffset, region.levelScale, area.statMult, bonuses);
     return;
+  }
+  if (!plan) {
+    ex.timer = bonuses.walkMs;
+    return;
+  }
+  if (plan.kind === 'trainer') {
+    const tr = area.routeTrainers.find((t) => t.id === plan.trainerId)!;
+    startTrainerBattle(ctx, state, tr, 'trainer', 0, 1, area.statMult, bonuses);
+    return;
+  }
+  if (plan.kind === 'wild') {
+    startWildBattle(ctx, state, area, plan.species, plan.level, bonuses, plan.legendary, plan.method);
+  }
+}
+
+/**
+ * Sorteia o próximo encontro da área. Chamado no início da caminhada para que a UI mostre o alvo; o shiny e os IVs
+ * só são sorteados no contato (startWildBattle). A ordem de consumo do RNG é a mesma de antes (tudo acontece entre o
+ * fim de uma batalha e o início da próxima, sem outros sorteios no meio).
+ */
+export function planEncounter(ctx: GameContext, state: GameState, area: ResolvedArea): EncounterPlan | null {
+  const region = ctx.data.regionById.get(area.regionId)!;
+  if (area.gym || area.league) {
+    const tr = sequenceOf(area)[state.exploration.sequenceIndex];
+    if (!tr) return null;
+    const m = tr.team[0];
+    return {
+      kind: 'challenge', areaId: area.id, trainerId: tr.id, species: m.species, trainerName: `${tr.trainerClass} ${tr.name}`,
+      level: Math.max(1, Math.min(100, Math.round(region.levelOffset + m.level * region.levelScale))),
+    };
   }
   const progress = areaProgress(state, area.id);
   const pending = area.routeTrainers.filter((t) => !progress.trainersDefeated.includes(t.id));
   const table = encounterTable(state, area, ctx.now());
   if (pending.length && (table.length === 0 || ctx.rng.chance(0.2))) {
-    startTrainerBattle(ctx, state, pending[0], 'trainer', 0, 1, area.statMult, bonuses);
-    return;
+    const tr = pending[0];
+    return { kind: 'trainer', areaId: area.id, trainerId: tr.id, species: tr.team[0].species, level: tr.team[0].level, trainerName: `${tr.trainerClass} ${tr.name}` };
   }
-  if (!table.length) {
-    ex.timer = bonuses.walkMs;
-    return;
-  }
+  if (!table.length) return null;
   // Lendários: um encontro raro por área até ser capturado.
   for (const lg of area.legendaries ?? []) {
     if ((state.pokedex[lg.species]?.caught ?? 0) > 0) continue;
-    if (ctx.rng.chance(lg.chance)) {
-      startWildBattle(ctx, state, area, lg.species, transformLevel(region, lg.level), bonuses, true, 'walk');
-      return;
-    }
+    if (ctx.rng.chance(lg.chance)) return { kind: 'wild', areaId: area.id, species: lg.species, level: transformLevel(region, lg.level), legendary: true, method: 'walk' };
   }
   let candidates = table;
   const repel = state.boosts.some((b) => b.kind === 'repel');
@@ -160,7 +186,7 @@ function startNextEncounter(ctx: GameContext, state: GameState, area: ResolvedAr
     if (filtered.length) candidates = filtered;
   }
   const { slot } = ctx.rng.weighted(candidates, (x) => x.weight);
-  startWildBattle(ctx, state, area, slot.species, ctx.rng.int(slot.min, slot.max), bonuses, false, slot.method);
+  return { kind: 'wild', areaId: area.id, species: slot.species, level: ctx.rng.int(slot.min, slot.max), legendary: false, method: slot.method };
 }
 
 function sequenceOf(area: ResolvedArea): TrainerDef[] {
@@ -311,6 +337,7 @@ function throwBall(ctx: GameContext, state: GameState, area: ResolvedArea, bonus
   if (state.inventory[ball] <= 0) delete state.inventory[ball];
   state.stats.captureAttempts++;
   state.hunt.ballsUsed++;
+  state.hunt.spent = (state.hunt.spent ?? 0) + (ctx.data.items.get(ball)?.price ?? 0);
   const pk = state.pokemon[uid];
   const sp = speciesOf(ctx.data, b.foe.species);
   const bm = ballMultiplier(ctx, state, ball, b.foe.species, area, cap.throws === 0);
@@ -512,7 +539,8 @@ export function setActiveArea(state: GameState, areaId: string): void {
   state.exploration.phase = state.exploration.phase === 'healing' ? 'healing' : 'walking';
   if (state.exploration.phase === 'walking') state.exploration.timer = 1000;
   state.exploration.sequenceIndex = 0;
-  state.hunt = { areaId, durationMs: 0, xp: 0, money: 0, encounters: 0, wins: 0, losses: 0, captures: 0, ballsUsed: 0, shinies: 0 };
+  state.exploration.next = undefined;
+  state.hunt = { areaId, durationMs: 0, xp: 0, money: 0, encounters: 0, wins: 0, losses: 0, captures: 0, ballsUsed: 0, shinies: 0, trainerXp: 0, spent: 0 };
 }
 
 export { computeBonuses };
